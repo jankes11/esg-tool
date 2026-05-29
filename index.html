@@ -848,13 +848,41 @@ function checkStripeReturn() {
 }
 
 function showPaymentSuccessBanner() {
-  // Show a banner on welcome screen telling user to complete the assessment
-  const hero = document.querySelector('.hero');
-  if (!hero) return;
-  const banner = document.createElement('div');
-  banner.style.cssText = 'background:#e1f5ee;border:2px solid #1d9e75;border-radius:.75rem;padding:16px 20px;margin-bottom:24px;text-align:left';
-  banner.innerHTML = '<div style="font-size:15px;font-weight:600;color:#085041;margin-bottom:6px">✅ Payment received — thank you!</div><div style="font-size:13px;color:#0f6e56;line-height:1.6">Your PDF report is unlocked. Please complete the assessment to generate and download your personalised report. Your progress will be saved automatically.</div>';
-  hero.insertBefore(banner, hero.firstChild);
+  // Payment received but no saved answers — show download screen directly
+  // Build a minimal results screen so user can download PDF immediately
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-results').classList.add('active');
+
+  const container = document.getElementById('results-container');
+  container.innerHTML = `
+    <div style="max-width:600px;margin:0 auto;padding:2rem 1.25rem;text-align:center">
+      <div style="font-size:3rem;margin-bottom:1rem">✅</div>
+      <h1 style="font-size:1.5rem;font-weight:600;margin-bottom:.5rem">Payment confirmed!</h1>
+      <p style="color:var(--muted);margin-bottom:2rem">Your PDF report is ready. Enter your company name below and download immediately — no need to redo the assessment.</p>
+      <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-xl);padding:1.5rem;text-align:left;margin-bottom:1.5rem">
+        <div style="margin-bottom:1rem">
+          <label style="display:block;font-size:.8125rem;font-weight:500;color:var(--muted);margin-bottom:.375rem">Company name (for your PDF)</label>
+          <input id="quick-co-name" type="text" placeholder="e.g. Acme Ltd" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.875rem;color:var(--tx)">
+        </div>
+        <div>
+          <label style="display:block;font-size:.8125rem;font-weight:500;color:var(--muted);margin-bottom:.375rem">Industry (optional)</label>
+          <input id="quick-industry" type="text" placeholder="e.g. Construction, Retail" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.875rem;color:var(--tx)">
+        </div>
+      </div>
+      <button class="btn-primary" style="width:100%;justify-content:center;font-size:1rem;margin-bottom:1rem" onclick="quickDownloadPDF()">📄 Download my PDF report</button>
+      <p style="font-size:.8125rem;color:var(--muted)">Or <a href="#" onclick="restartAll();return false" style="color:var(--p)">complete the full assessment</a> for a personalised report with your actual scores.</p>
+    </div>`;
+
+  _pdfUnlocked = true;
+}
+
+function quickDownloadPDF() {
+  const coName = document.getElementById('quick-co-name').value || 'Your Company';
+  const industry = document.getElementById('quick-industry').value || '';
+  // Set the co-name so generatePDF picks it up
+  if (document.getElementById('co-name')) document.getElementById('co-name').value = coName;
+  if (document.getElementById('co-industry')) document.getElementById('co-industry').value = industry;
+  generatePDF();
 }
 
 checkStripeReturn();
