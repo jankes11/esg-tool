@@ -4,9 +4,247 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ESG Assessment Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
+/* ── PDF Generation ──────────────────────────────────────── */
+function generatePDF() {
+  if (!_pdfUnlocked) { alert('Please verify your payment first.'); return; }
+  var btn = document.getElementById('pdf-btn');
+  if (btn) { btn.textContent = 'Generating...'; btn.disabled = true; }
+  setTimeout(function() {
+    try {
+      var jsPDF = window.jspdf.jsPDF;
+      var doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      var W = 210, H = 297;
+      var co = document.getElementById('co-name').value || 'Your Company';
+      var industry = document.getElementById('co-industry').value || '';
+      var size = document.getElementById('co-size').value || '';
+      var coDate = document.getElementById('co-date').value || new Date().toISOString().split('T')[0];
+      var catScores2 = CATEGORIES.map(function(c2){ return { cat: c2, score: catScore(c2) }; });
+      var valid = catScores2.filter(function(x){ return x.score !== null; }).map(function(x){ return x.score; });
+      var overall = valid.length ? Math.round(valid.reduce(function(a,b){return a+b;},0)/valid.length) : 0;
+      var grade = getGrade(overall);
+      var gaps = [], partials = [], goods = [];
+      CATEGORIES.forEach(function(cat) {
+        cat.questions.forEach(function(q,qi) {
+          var v = answers[cat.id+'_'+qi], n = notes[cat.id+'_'+qi]||'';
+          if(v==='no') gaps.push({cat:cat.label,q:q,note:n});
+          else if(v==='partial') partials.push({cat:cat.label,q:q,note:n});
+          else if(v==='yes') goods.push({cat:cat.label,q:q});
+        });
+      });
+      var gc = overall>=80?[15,110,86]:overall>=60?[29,158,117]:overall>=40?[186,117,23]:overall>=20?[153,60,29]:[163,45,45];
+
+      function wrap(doc2,text,x,y,maxW,lh) {
+        var lines = doc2.splitTextToSize(text,maxW);
+        lines.forEach(function(l){ doc2.text(l,x,y); y+=lh; });
+        return y;
+      }
+      function foot(doc2,n2) {
+        doc2.setFillColor(247,246,243); doc2.rect(0,H-12,W,12,'F');
+        doc2.setFontSize(8); doc2.setTextColor(160,158,150);
+        doc2.text('myESGcheck.com · ESRS/VSME 2024 · Not legal advice',14,H-4.5);
+        doc2.text('Page '+n2,W-14,H-4.5,{align:'right'});
+        doc2.setTextColor(26,25,22);
+      }
+
+      // PAGE 1: Cover
+      doc.setFillColor(4,52,44); doc.rect(0,0,W,190,'F');
+      doc.setFillColor(15,110,86); doc.roundedRect(14,14,14,14,2,2,'F');
+      doc.setFontSize(8); doc.setTextColor(255,255,255); doc.text('ESG',17,22.5);
+      doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.text('myESGcheck',32,23);
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,160,155);
+      doc.text('ESG ASSESSMENT REPORT · '+coDate,14,52);
+      doc.setFontSize(28); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('Your ESG performance,',14,70); doc.setTextColor(79,214,168);
+      doc.text('clearly measured.',14,84);
+      doc.setFontSize(10); doc.setFont(undefined,'normal'); doc.setTextColor(190,190,185);
+      wrap(doc,'A full sustainability assessment for '+co+', benchmarked against ESRS and VSME 2024.',14,100,160,6);
+      [[overall+'','Overall ESG Score',grade.label],[industry||'N/A','Industry',size||''],[' ESRS+VSME','Framework','Dec 2024']].forEach(function(box,i){
+        var bx=14+i*63;
+        doc.setFillColor(255,255,255,15); doc.roundedRect(bx,130,59,38,3,3,'F');
+        doc.setFontSize(8); doc.setTextColor(150,150,145); doc.text(box[1],bx+5,139);
+        doc.setFontSize(i===0?18:11); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+        doc.text(String(box[0]).substring(0,16),bx+5,152);
+        doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(79,214,168);
+        doc.text(box[2],bx+5,160);
+      });
+      doc.setFillColor(255,255,255); doc.rect(0,190,W,H-190,'F');
+      doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text(co,14,205);
+      doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      if(industry) doc.text('Industry: '+industry+(size?' · Employees: '+size:''),14,212);
+      doc.text('Date: '+coDate,14,219);
+      foot(doc,1);
+
+      // PAGE 2: Scores
+      doc.addPage();
+      doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 1',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Score overview',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      // Ring
+      var cx=50,cy=78,r=28,circ=2*Math.PI*r;
+      doc.setDrawColor(240,238,234); doc.setLineWidth(6); doc.circle(cx,cy,r,'S');
+      doc.setDrawColor.apply(doc,gc.concat([])); doc.setLineWidth(6);
+      var steps=60,sa=-Math.PI/2,ea=sa+(2*Math.PI*overall/100);
+      for(var s=0;s<steps;s++){
+        var a1=sa+(ea-sa)*s/steps,a2=sa+(ea-sa)*(s+1)/steps;
+        doc.setDrawColor(gc[0],gc[1],gc[2]);
+        doc.line(cx+r*Math.cos(a1),cy+r*Math.sin(a1),cx+r*Math.cos(a2),cy+r*Math.sin(a2));
+      }
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(gc[0],gc[1],gc[2]);
+      doc.text(String(overall),cx,cy+4,{align:'center'});
+      doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('OVERALL',cx,cy+9,{align:'center'});
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(gc[0],gc[1],gc[2]); doc.text(grade.label,cx,cy+15,{align:'center'});
+      // Bars
+      var by=44;
+      catScores2.forEach(function(cs){
+        if(cs.score===null) return;
+        var col=cs.score>=80?[15,110,86]:cs.score>=60?[29,158,117]:cs.score>=40?[186,117,23]:cs.score>=20?[153,60,29]:[163,45,45];
+        var gl=cs.score>=80?'Leading':cs.score>=60?'Progressing':cs.score>=40?'Developing':cs.score>=20?'Starting out':'Needs action';
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(cs.cat.icon+' '+cs.cat.label,92,by+3);
+        doc.setFillColor(240,238,234); doc.roundedRect(92,by+5,90,4,1,1,'F');
+        doc.setFillColor(col[0],col[1],col[2]); doc.roundedRect(92,by+5,90*cs.score/100,4,1,1,'F');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
+        doc.text(cs.score+'%',185,by+3,{align:'right'});
+        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+        doc.text(gl,W-14,by+3,{align:'right'});
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3); doc.line(92,by+12,W-14,by+12);
+        by+=15;
+      });
+      foot(doc,2);
+
+      // PAGE 3: Findings
+      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 2',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Key findings',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      doc.text('Identified: '+gaps.length+' gaps · '+partials.length+' in progress · '+goods.length+' strong areas',14,42);
+      var fy=50;
+      gaps.slice(0,4).concat(partials.slice(0,3)).concat(goods.slice(0,2)).forEach(function(f,i){
+        if(fy>H-40) return;
+        var isGap=i<gaps.slice(0,4).length, isPart=i>=gaps.slice(0,4).length&&i<gaps.slice(0,4).length+partials.slice(0,3).length;
+        var bg=isGap?[253,244,244]:isPart?[254,248,238]:[240,250,246];
+        var bd=isGap?[240,192,192]:isPart?[240,216,160]:[184,224,208];
+        var dc=isGap?[163,45,45]:isPart?[186,117,23]:[15,110,86];
+        var lbl=isGap?'GAP':isPart?'IN PROGRESS':'STRONG';
+        doc.setFillColor(bg[0],bg[1],bg[2]); doc.setDrawColor(bd[0],bd[1],bd[2]); doc.setLineWidth(0.4);
+        doc.roundedRect(14,fy,W-28,20,2,2,'FD');
+        doc.setFillColor(dc[0],dc[1],dc[2]); doc.circle(20,fy+7,2,'F');
+        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(dc[0],dc[1],dc[2]); doc.text(lbl,25,fy+8);
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85); doc.text(f.cat,25,fy+14);
+        doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+        doc.text(doc.splitTextToSize(f.q,W-52)[0],25,fy+19);
+        fy+=24;
+      });
+      foot(doc,3);
+
+      // PAGE 4: Action Plan
+      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 3',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Action plan',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      doc.setFillColor(247,246,243); doc.rect(14,38,W-28,8,'F');
+      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
+      ['PRIORITY','AREA','ACTION','TIMELINE'].forEach(function(h,i){doc.text(h,[17,42,82,175][i],43.5);});
+      var acts=gaps.slice(0,5).map(function(x){return Object.assign({p:'High',t:'1-3 months'},x);})
+        .concat(partials.slice(0,3).map(function(x){return Object.assign({p:'Medium',t:'3-6 months'},x);})).slice(0,7);
+      var ay=52;
+      acts.forEach(function(a,i){
+        if(ay>H-30) return;
+        if(i%2===0){doc.setFillColor(252,252,251);doc.rect(14,ay-4,W-28,14,'F');}
+        var pc=a.p==='High'?[163,45,45]:[186,117,23], pb=a.p==='High'?[253,232,232]:[254,243,226];
+        doc.setFillColor(pb[0],pb[1],pb[2]); doc.roundedRect(17,ay-2,22,6,1,1,'F');
+        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(pc[0],pc[1],pc[2]);
+        doc.text(a.p,28,ay+2,{align:'center'});
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(a.cat.substring(0,14),42,ay+2);
+        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85); doc.setFontSize(7.5);
+        doc.text(doc.splitTextToSize(a.q,86)[0],82,ay+2);
+        doc.setFillColor(240,238,234); doc.roundedRect(170,ay-2,30,6,1,1,'F');
+        doc.setFontSize(7); doc.setTextColor(92,90,85); doc.text(a.t,185,ay+2,{align:'center'});
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3); doc.line(14,ay+8,W-14,ay+8);
+        ay+=14;
+      });
+      foot(doc,4);
+
+      // PAGE 5: AI Recommendations
+      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 4',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('AI-powered recommendations',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      doc.setFillColor(240,250,246); doc.setDrawColor(200,232,222); doc.setLineWidth(0.5);
+      doc.roundedRect(14,38,W-28,220,4,4,'FD');
+      doc.setFillColor(15,110,86); doc.roundedRect(19,43,18,8,2,2,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255); doc.text('AI',28,48.5,{align:'center'});
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+      doc.text('Personalised for '+co,42,48.5);
+      var aiEl=document.getElementById('ai-content');
+      var aiText=aiEl&&!aiEl.classList.contains('ai-loading')?aiEl.innerText:'Complete your assessment to see AI recommendations here.';
+      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+      wrap(doc,aiText,22,60,W-44,5.5);
+      foot(doc,5);
+
+      // PAGE 6: ESRS Alignment
+      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 5',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('ESRS / VSME alignment',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      var esrsRows=[
+        ['ESRS E1/VSME B3','Climate & energy',overall>=60?'Progressing':'Partial'],
+        ['ESRS E2-E5/VSME B4-B7','Environment','Progressing'],
+        ['ESRS S1/VSME B8-B10','Own workforce','Progressing'],
+        ['ESRS S2/VSME B11','Supply chain',gaps.filter(function(g){return g.cat.includes('Supply');}).length>0?'Gaps present':'Progressing'],
+        ['ESRS G1/VSME B11','Governance','Progressing'],
+      ];
+      doc.setFillColor(247,246,243); doc.rect(14,40,W-28,8,'F');
+      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
+      doc.text('STANDARD',18,45.5); doc.text('TOPIC',72,45.5); doc.text('COVERAGE',155,45.5);
+      var ey=56;
+      esrsRows.forEach(function(row,i){
+        if(i%2===0){doc.setFillColor(252,252,251);doc.rect(14,ey-4,W-28,12,'F');}
+        var cc=row[2].includes('Gap')?[163,45,45]:row[2]==='Partial'?[186,117,23]:[29,158,117];
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text(row[0],18,ey+2);
+        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85); doc.text(row[1],72,ey+2);
+        doc.setFont(undefined,'bold'); doc.setTextColor(cc[0],cc[1],cc[2]); doc.text(row[2],155,ey+2);
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3); doc.line(14,ey+6,W-14,ey+6);
+        ey+=13;
+      });
+      doc.setFillColor(247,246,243); doc.roundedRect(14,ey+8,W-28,18,3,3,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Disclaimer',20,ey+15);
+      doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      wrap(doc,'Self-assessment tool only. Does not constitute formal ESG verification or assurance.',20,ey+21,W-44,5);
+      foot(doc,6);
+
+      // PAGE 7: Back Cover
+      doc.addPage(); doc.setFillColor(4,52,44); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(28); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('Ready to take',W/2,110,{align:'center'});
+      doc.text('the next step?',W/2,125,{align:'center'});
+      doc.setFontSize(11); doc.setFont(undefined,'normal'); doc.setTextColor(180,200,195);
+      wrap(doc,'Retake this assessment annually to track your progress. Share with investors, customers, or your team.',W/2-65,142,130,6);
+      doc.setFillColor(15,110,86); doc.roundedRect(W/2-38,165,76,14,7,7,'F');
+      doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('myesgcheck.com',W/2,173.5,{align:'center'});
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(255,255,255,60);
+      doc.text('© 2026 myESGcheck · ESRS Set 1 (EU 2023/2772) · EFRAG VSME Dec 2024',W/2,H-10,{align:'center'});
+
+      var filename=(co.replace(/[^a-z0-9]/gi,'-').toLowerCase()||'company')+'-esg-report.pdf';
+      doc.save(filename);
+      if(btn){btn.textContent='✓ Downloaded!';btn.disabled=false;setTimeout(function(){btn.textContent='📄 Download PDF Report';},3000);}
+    } catch(err) {
+      console.error('PDF error:',err);
+      if(btn){btn.textContent='📄 Download PDF Report';btn.disabled=false;}
+      alert('PDF generation failed: '+err.message);
+    }
+  },100);
+}
+
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ─── TOKENS ─────────────────────────────────────────────── */
@@ -249,14 +487,14 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
       <h1>How sustainable is your business, really?</h1>
       <p>Answer 41 plain-English questions across 5 areas, get your ESG score, and receive an AI-powered action plan — in about 20 minutes.</p>
       <div class="cat-grid">
-        <div class="cat-pill"><div class="icon">🌡️</div><span class="name">Climate</span><span class="qs">7 questions</span></div>
-        <div class="cat-pill"><div class="icon">🌿</div><span class="name">Environment</span><span class="qs">8 questions</span></div>
-        <div class="cat-pill"><div class="icon">🤝</div><span class="name">Your People</span><span class="qs">9 questions</span></div>
-        <div class="cat-pill"><div class="icon">🔗</div><span class="name">Supply Chain</span><span class="qs">7 questions</span></div>
-        <div class="cat-pill"><div class="icon">💼</div><span class="name">Governance</span><span class="qs">10 questions</span></div>
+        <div class="cat-pill"><div class="icon">🌡️</div><span class="name">Climate</span><span class="qs">6 questions</span></div>
+        <div class="cat-pill"><div class="icon">🌿</div><span class="name">Environment</span><span class="qs">7 questions</span></div>
+        <div class="cat-pill"><div class="icon">🤝</div><span class="name">Your People</span><span class="qs">7 questions</span></div>
+        <div class="cat-pill"><div class="icon">🔗</div><span class="name">Supply Chain</span><span class="qs">5 questions</span></div>
+        <div class="cat-pill"><div class="icon">💼</div><span class="name">Governance</span><span class="qs">8 questions</span></div>
       </div>
       <button class="btn-primary" onclick="showScreen('company')">Start assessment →</button>
-      <p class="hero-note">No login · No jargon · 41 questions · Aligned with ESRS/VSME 2024 · Results stay in your browser</p>
+      <p class="hero-note">No login · No jargon · Aligned with ESRS/VSME 2024 · Results stay in your browser</p>
     </div>
   </div>
 </div>
@@ -310,9 +548,7 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
       <div id="gdpr-row" onclick="toggleGDPR(event)" style="display:flex;flex-direction:row;align-items:flex-start;gap:12px;margin-bottom:20px;padding:14px 16px;border:2px solid #ccc;border-radius:12px;cursor:pointer;background:#f9f9f9;text-align:left;width:100%;box-sizing:border-box">
         <input type="checkbox" id="gate-gdpr" style="position:absolute;opacity:0;width:0;height:0">
         <div id="custom-check-box" style="width:22px;height:22px;min-width:22px;min-height:22px;border:2.5px solid #888;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#ffffff;box-sizing:border-box;margin-top:1px">
-          <svg id="check-tick" style="display:none;width:13px;height:13px" viewBox="0 0 13 13" fill="none">
-            <polyline points="1.5,6.5 5,10 11.5,2.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <svg id="check-tick" style="display:none;width:13px;height:13px" viewBox="0 0 13 13" fill="none"><polyline points="1.5,6.5 5,10 11.5,2.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
         <span style="font-size:13px;color:#6b6960;line-height:1.55;user-select:none;flex:1">I agree to receive my ESG report and occasional tips on improving sustainability performance. I can unsubscribe at any time. See our <a href="/privacy" target="_blank" onclick="event.stopPropagation()" style="color:#0f6e56;text-decoration:underline">Privacy Policy</a>.</span>
       </div>
@@ -333,7 +569,7 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
    CONFIGURATION — replace with your own values
 ══════════════════════════════════════════════════════════ */
 const CONFIG = {
-  STRIPE_LINK: 'https://buy.stripe.com/cNi14o2mdfrfewRbgo8bS01'
+  STRIPE_LINK: 'https://buy.stripe.com/cNi14o2mdfrfewRbgo8bS01',
 };
 
 /* ══════════════════════════════════════════════════════════
@@ -350,8 +586,7 @@ const CATEGORIES = [
       'Have you thought about how things like extreme weather, rising energy costs, or new environmental regulations could affect your business in the next few years?',
       'Do you have any goals or a rough plan to reduce your energy use or carbon emissions — even if it\'s just a target to work towards?',
       'Have you actually changed anything — like switching to LED lighting, reducing business flights, or choosing a greener supplier — specifically to lower your environmental impact?',
-      'Do any of the energy sources you use — such as electricity, heating, or fuel — come from renewable or low-carbon providers?',
-      'Do you communicate your environmental goals or progress to your employees, customers, or suppliers — for example through your website, newsletters, or annual updates?'
+      'Do any of the energy sources you use — such as electricity, heating, or fuel — come from renewable or low-carbon providers?'
     ]
   },
   {
@@ -365,8 +600,7 @@ const CATEGORIES = [
       'Do you keep track of how much waste your business produces, and have you taken any steps to cut it down — such as reducing packaging, recycling more, or reusing materials?',
       'Do you know whether your business premises, operations, or supply chain are near any nature reserves, rivers, or protected habitats — and have you taken any steps to avoid harming them?',
       'Do you try to design or source products and packaging so they last longer, can be repaired, or are made from recycled materials — rather than being single-use or sent straight to landfill?',
-      'Do you monitor how much water your business uses, and have you taken any steps to use less or to avoid polluting water sources nearby?',
-      'Have you had any environmental incidents — such as a spill, illegal waste disposal, or pollution complaint — and if so, did you report it and take action to prevent it happening again?'
+      'Do you monitor how much water your business uses, and have you taken any steps to use less or to avoid polluting water sources nearby?'
     ]
   },
   {
@@ -380,9 +614,7 @@ const CATEGORIES = [
       'Does your business do anything to give back to the local community — such as hiring locally, supporting charities, volunteering, or partnering with local organisations?',
       'Is there a safe and easy way for your employees or others to raise concerns about how your business behaves — for example a complaints process, an open-door policy, or an anonymous reporting line?',
       'Do you regularly share information with your staff about how the business is doing — including any plans that could affect their jobs or working conditions?',
-      'Do you track any basic workforce data — such as how many people leave each year, the split between full-time and part-time staff, or the gender balance across your team?',
-      'Do you offer your employees any training, development opportunities, or support to help them grow their skills — beyond what is legally required?',
-      'Do you pay all your employees at least the real Living Wage, and do you review pay regularly to make sure it is fair across different groups of staff?'
+      'Do you track any basic workforce data — such as how many people leave each year, the split between full-time and part-time staff, or the gender balance across your team?'
     ]
   },
   {
@@ -394,9 +626,7 @@ const CATEGORIES = [
       'Have you ever checked whether any of your suppliers could be involved in serious issues like forced labour, child labour, or unsafe working conditions — even if only at a basic level?',
       'Do your contracts or buying terms with suppliers include any requirements around ethical conduct, working conditions, or environmental standards?',
       'Do you make any effort to buy from local businesses, small suppliers, or companies owned by people from underrepresented groups — rather than always going with the biggest or cheapest option?',
-      'When choosing new suppliers, do you look at their environmental and social track record — not just their price and quality?',
-      'Do you have a Modern Slavery statement or any policy that addresses the risk of forced labour, trafficking, or exploitation in your business or supply chain?',
-      'Do you give smaller or local suppliers a fair chance to win your business — for example through open tendering, prompt payment, or reasonable contract terms?'
+      'When choosing new suppliers, do you look at their environmental and social track record — not just their price and quality?'
     ]
   },
   {
@@ -411,9 +641,7 @@ const CATEGORIES = [
       'Do you have basic data protection practices in place — such as knowing what personal data you hold, who can access it, and what you\'d do if there was a data breach?',
       'Before introducing a new product, service, or way of working, do you think through any possible downsides — for example to people\'s health, jobs, privacy, or the environment?',
       'Do you actively involve employees, customers, or community members in decisions that affect them — for example through surveys, meetings, or feedback channels?',
-      'Has your business had any serious ethical incidents in the past three years — such as a bribery case, regulatory fine, or major data breach — and if so, was it properly investigated and resolved?',
-      'Do you have a whistleblowing policy or a confidential way for employees to report wrongdoing without fear of losing their job or being treated unfairly?',
-      'Do you pay your taxes in the countries where you genuinely do business, and do you avoid artificial arrangements designed purely to reduce your tax bill?'
+      'Has your business had any serious ethical incidents in the past three years — such as a bribery case, regulatory fine, or major data breach — and if so, was it properly investigated and resolved?'
     ]
   }
 ];
@@ -527,54 +755,6 @@ function goToCat(idx) {
 }
 
 /* ── Email Gate ────────────────────────────────────────── */
-/* ── Email Gate ────────────────────────────────────────── */
-let _gdprOn = false;
-
-function toggleGDPR(e) {
-  if (e && e.target && e.target.tagName === 'A') return;
-  _gdprOn = !_gdprOn;
-  document.getElementById('gate-gdpr').checked = _gdprOn;
-  var row = document.getElementById('gdpr-row');
-  var box = document.getElementById('custom-check-box');
-  var tick = document.getElementById('check-tick');
-  if (_gdprOn) {
-    row.style.borderColor = '#1d9e75';
-    row.style.background = '#e1f5ee';
-    box.style.background = '#1d9e75';
-    box.style.borderColor = '#1d9e75';
-    tick.style.display = 'block';
-  } else {
-    row.style.borderColor = '#ccc';
-    row.style.background = '#f9f9f9';
-    box.style.background = '#ffffff';
-    box.style.borderColor = '#888';
-    tick.style.display = 'none';
-  }
-}
-
-function submitGate() {
-  const name = document.getElementById('gate-name').value.trim();
-  const email = document.getElementById('gate-email').value.trim();
-  const errEl = document.getElementById('gate-err');
-
-  if (!name || !email || !email.includes('@')) {
-    errEl.textContent = 'Please enter your name and a valid email address.';
-    errEl.style.display = 'block';
-    return;
-  }
-  if (!_gdprOn) {
-    errEl.textContent = 'Please tick the consent box to continue.';
-    errEl.style.display = 'block';
-    return;
-  }
-  errEl.style.display = 'none';
-
-  // Save to Brevo (non-blocking — fire and forget)
-  saveToBrevo(name, email);
-
-  // Show results
-  buildResults(name, email);
-}
 
 async function saveToBrevo(name, email) {
   try {
@@ -583,7 +763,7 @@ async function saveToBrevo(name, email) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, name })
     });
-  } catch (e) { /* silent fail — don't block results */ }
+  } catch (e) { /* silent fail */ }
 }
 
 /* ── Scoring ───────────────────────────────────────────── */
@@ -619,7 +799,6 @@ function buildResults(visitorName, visitorEmail) {
   const co = document.getElementById('co-name').value || 'Your Company';
   const industry = document.getElementById('co-industry').value || '';
   const size = document.getElementById('co-size').value || '';
-  const coDate = document.getElementById('co-date').value || new Date().toISOString().split('T')[0];
 
   const catScores = CATEGORIES.map(c => ({ cat: c, score: catScore(c) }));
   const valid = catScores.filter(x => x.score !== null).map(x => x.score);
@@ -714,7 +893,7 @@ function buildResults(visitorName, visitorEmail) {
         </div>
       </div>
 
-      <div class="upgrade-box" id="upgrade-box">
+      <div class="upgrade-box">
         <h2>Want a full branded PDF report?</h2>
         <p>Get a professional 8-page report with your scores, AI narrative, action plan, and ESRS alignment — ready to share with investors, customers, or your team.</p>
         <div class="upgrade-features">
@@ -724,16 +903,15 @@ function buildResults(visitorName, visitorEmail) {
           <span class="uf">✓ Benchmark context</span>
           <span class="uf">✓ Instant download</span>
         </div>
-        <button class="btn-stripe" id="stripe-pay-btn" onclick="startCheckout('${visitorEmail}')">
+        <a class="btn-stripe" href="${CONFIG.STRIPE_LINK}?prefilled_email=${encodeURIComponent(visitorEmail || '')}" target="_blank">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Get full PDF report — £19
-        </button>
-        <p id="checkout-err" style="display:none;font-size:12px;color:var(--err);margin-top:8px"></p>
+        </a>
         <p class="upgrade-note">Secure payment via Stripe · Apple Pay, Google Pay, Klarna accepted</p>
       </div>
 
       <div class="export-btns">
-        <button class="btn-primary" id="pdf-btn" onclick="generatePDF()" style="display:none">📄 Download PDF Report</button>
+        <button class="btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
         <button class="btn-secondary" onclick="exportCSV()">⬇️ Export CSV</button>
         <button class="btn-secondary" onclick="restartAll()">↺ Start over</button>
       </div>
@@ -743,12 +921,24 @@ function buildResults(visitorName, visitorEmail) {
 
   showScreen('results');
   callAI(co, industry, size, overall, catScores, gaps, partials);
-  // Auto-verify if returning from Stripe
-  const pendingSession = sessionStorage.getItem('pending_session_id');
-  if (pendingSession) verifySessionAndUnlock(pendingSession);
 }
 
 /* ── AI Recommendations ────────────────────────────────── */
+function formatAI(text) {
+  var t = text
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+  t = t.replace(/^### (.+)$/mg,'<b style="display:block;margin-top:.75rem;color:var(--tx)">$1</b>');
+  t = t.replace(/^## (.+)$/mg,'<b style="display:block;margin-top:1rem;font-size:.9375rem;color:var(--p)">$1</b>');
+  t = t.replace(/^# (.+)$/mg,'<b style="display:block;margin-bottom:.5rem;font-size:1rem">$1</b>');
+  t = t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  t = t.replace(/^(\d+)\. /mg,'<br><b style="color:var(--p)">$1.</b> ');
+  t = t.replace(/^[- ] /mg,'<br>\u2022 ');
+  t = t.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  return t;
+}
+
 async function callAI(co, industry, size, overall, catScores, gaps, partials) {
   const catSummary = catScores.map(({ cat, score }) =>
     `${cat.label}: ${score === null ? 'not assessed' : score + '%'}`
@@ -762,649 +952,49 @@ async function callAI(co, industry, size, overall, catScores, gaps, partials) {
     `- [${x.cat}] ${x.q}`
   ).join('\n');
 
-  const el = document.getElementById('ai-content');
+  const prompt = `You are a plain-speaking ESG consultant helping a small or medium business improve its sustainability.
 
+Company: ${co || 'Not specified'}
+Industry: ${industry || 'Not specified'}
+Size: ${size || 'Not specified'}
+Overall ESG score: ${overall}%
+Category scores: ${catSummary}
+
+Gaps (answered No):
+${gapList || 'None identified'}
+
+In progress (answered Partial):
+${partialList || 'None identified'}
+
+Write a short, practical improvement plan using plain English — no jargon. Three sections:
+
+1. Quick wins (next 1–3 months)
+2–3 specific, concrete actions that target their actual gaps. Name real tools or frameworks if helpful (e.g. GHG Protocol, ISO 14001).
+
+2. Bigger priorities (next 6–12 months)
+2–3 medium-term actions. Keep them realistic for a ${size || 'small'} business in ${industry || 'their sector'}.
+
+3. Where they stand
+1–2 sentences of honest context: how does a ${size || 'small'} ${industry || 'business'} at ${overall}% compare to peers, and what do the better ones do differently?
+
+Keep the whole response under 200 words. Be direct and encouraging — not preachy.`;
+
+  const el = document.getElementById('ai-content');
   try {
     const res = await fetch('/api/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ co, industry, size, overall, catSummary, gapList, partialList })
     });
-
     const data = await res.json();
-
     if (!el) return;
-
-    if (res.status === 429) {
-      el.classList.remove('ai-loading');
-      el.textContent = data.message || 'You have reached the free AI limit for today. Come back tomorrow for a fresh recommendation.';
-      return;
-    }
-
-    if (!res.ok || data.error) {
-      el.classList.remove('ai-loading');
-      el.textContent = 'AI recommendations are temporarily unavailable. Please review the action plan above.';
-      return;
-    }
-
+    if (res.status === 429) { el.classList.remove('ai-loading'); el.textContent = data.message || 'Daily AI limit reached. Try again tomorrow.'; return; }
+    if (!res.ok || data.error) { el.classList.remove('ai-loading'); el.textContent = 'AI recommendations temporarily unavailable.'; return; }
     el.classList.remove('ai-loading');
-    el.textContent = data.text || 'Unable to generate recommendations.';
-
+    el.innerHTML = formatAI(data.text || 'Unable to generate recommendations.');
   } catch (e) {
-    if (el) {
-      el.classList.remove('ai-loading');
-      el.textContent = 'AI recommendations are temporarily unavailable. Please review the action plan above.';
-    }
+    if (el) { el.classList.remove('ai-loading'); el.textContent = 'AI recommendations temporarily unavailable.'; }
   }
-}
-
-/* ── Stripe Paywall ─────────────────────────────────────── */
-let _pdfUnlocked = false;
-
-// Called on page load — check if returning from Stripe with session_id in URL
-function checkStripeReturn() {
-  const params = new URLSearchParams(window.location.search);
-  const sessionId = params.get('session_id');
-  if (!sessionId || !sessionId.startsWith('cs_')) return;
-
-  // Clean URL immediately
-  window.history.replaceState({}, '', window.location.pathname);
-
-  // Restore saved assessment data
-  try {
-    const savedAnswers = localStorage.getItem('esg_answers');
-    const savedNotes = localStorage.getItem('esg_notes');
-    if (savedAnswers) answers = JSON.parse(savedAnswers);
-    if (savedNotes) notes = JSON.parse(savedNotes);
-
-    const coName = localStorage.getItem('esg_co') || '';
-    const coIndustry = localStorage.getItem('esg_industry') || '';
-    const coSize = localStorage.getItem('esg_size') || '';
-    const coDate = localStorage.getItem('esg_date') || '';
-    const gateName = localStorage.getItem('esg_gate_name') || '';
-    const gateEmail = localStorage.getItem('esg_gate_email') || '';
-
-    // Restore form values
-    if (document.getElementById('co-name')) document.getElementById('co-name').value = coName;
-    if (document.getElementById('co-industry')) document.getElementById('co-industry').value = coIndustry;
-    if (document.getElementById('co-size')) document.getElementById('co-size').value = coSize;
-    if (document.getElementById('co-date')) document.getElementById('co-date').value = coDate;
-
-    // Build results and verify payment
-    if (Object.keys(answers).length > 0) {
-      buildResults(gateName, gateEmail);
-      // verifySessionAndUnlock is called inside buildResults via pending_session check
-      sessionStorage.setItem('pending_session_id', sessionId);
-    } else {
-      // No saved answers — show payment success message on welcome screen
-      sessionStorage.setItem('pending_session_id', sessionId);
-      showPaymentSuccessBanner();
-    }
-  } catch(e) {
-    console.warn('Could not restore assessment data:', e);
-    sessionStorage.setItem('pending_session_id', sessionId);
-    showPaymentSuccessBanner();
-  }
-}
-
-function showPaymentSuccessBanner() {
-  // Payment received but no saved answers — show download screen directly
-  // Build a minimal results screen so user can download PDF immediately
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-results').classList.add('active');
-
-  const container = document.getElementById('results-container');
-  container.innerHTML = `
-    <div style="max-width:600px;margin:0 auto;padding:2rem 1.25rem;text-align:center">
-      <div style="font-size:3rem;margin-bottom:1rem">✅</div>
-      <h1 style="font-size:1.5rem;font-weight:600;margin-bottom:.5rem">Payment confirmed!</h1>
-      <p style="color:var(--muted);margin-bottom:2rem">Your PDF report is ready. Enter your company name below and download immediately — no need to redo the assessment.</p>
-      <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-xl);padding:1.5rem;text-align:left;margin-bottom:1.5rem">
-        <div style="margin-bottom:1rem">
-          <label style="display:block;font-size:.8125rem;font-weight:500;color:var(--muted);margin-bottom:.375rem">Company name (for your PDF)</label>
-          <input id="quick-co-name" type="text" placeholder="e.g. Acme Ltd" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.875rem;color:var(--tx)">
-        </div>
-        <div>
-          <label style="display:block;font-size:.8125rem;font-weight:500;color:var(--muted);margin-bottom:.375rem">Industry (optional)</label>
-          <input id="quick-industry" type="text" placeholder="e.g. Construction, Retail" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.875rem;color:var(--tx)">
-        </div>
-      </div>
-      <button class="btn-primary" style="width:100%;justify-content:center;font-size:1rem;margin-bottom:1rem" onclick="quickDownloadPDF()">📄 Download my PDF report</button>
-      <p style="font-size:.8125rem;color:var(--muted)">Or <a href="#" onclick="restartAll();return false" style="color:var(--p)">complete the full assessment</a> for a personalised report with your actual scores.</p>
-    </div>`;
-
-  _pdfUnlocked = true;
-}
-
-function quickDownloadPDF() {
-  const coName = document.getElementById('quick-co-name').value || 'Your Company';
-  const industry = document.getElementById('quick-industry').value || '';
-  // Set the co-name so generatePDF picks it up
-  if (document.getElementById('co-name')) document.getElementById('co-name').value = coName;
-  if (document.getElementById('co-industry')) document.getElementById('co-industry').value = industry;
-  generatePDF();
-}
-
-checkStripeReturn();
-
-async function startCheckout(email) {
-  const btn = document.getElementById('stripe-pay-btn');
-  const errEl = document.getElementById('checkout-err');
-  if (btn) { btn.textContent = '⏳ Opening checkout…'; btn.disabled = true; }
-  if (errEl) errEl.style.display = 'none';
-
-  try {
-    const res = await fetch('/api/create-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email || '' })
-    });
-    const data = await res.json();
-
-    if (!res.ok || !data.url) {
-      if (errEl) { errEl.textContent = 'Could not open checkout. Please try again.'; errEl.style.display = 'block'; }
-      if (btn) { btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Get full PDF report — £19'; btn.disabled = false; }
-      return;
-    }
-
-    // Save all assessment data before leaving the page
-    try {
-      localStorage.setItem('esg_answers', JSON.stringify(answers));
-      localStorage.setItem('esg_notes', JSON.stringify(notes));
-      localStorage.setItem('esg_co', document.getElementById('co-name').value || '');
-      localStorage.setItem('esg_industry', document.getElementById('co-industry').value || '');
-      localStorage.setItem('esg_size', document.getElementById('co-size').value || '');
-      localStorage.setItem('esg_date', document.getElementById('co-date').value || '');
-      localStorage.setItem('esg_gate_name', document.getElementById('gate-name') ? document.getElementById('gate-name').value : '');
-      localStorage.setItem('esg_gate_email', email || '');
-    } catch(e) { console.warn('Could not save to localStorage:', e); }
-
-    // Redirect to Stripe Checkout
-    window.location.href = data.url;
-
-  } catch (err) {
-    if (errEl) { errEl.textContent = 'Connection error. Please try again.'; errEl.style.display = 'block'; }
-    if (btn) { btn.textContent = 'Get full PDF report — £19'; btn.disabled = false; }
-  }
-}
-
-async function verifySessionAndUnlock(sessionId) {
-  try {
-    const res = await fetch('/api/stripe-verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId })
-    });
-    const data = await res.json();
-
-    if (!res.ok || !data.valid) {
-      const msgs = {
-        not_paid: 'Payment not completed. Please finish the checkout.',
-        already_used: 'This payment has already been used to generate a report.',
-        wrong_amount: 'Payment amount does not match. Please contact support.',
-        stripe_error: 'Could not verify payment. Please try again.',
-      };
-      console.warn('Verify failed:', data.error);
-      const upgradeBox = document.getElementById('upgrade-box');
-      if (upgradeBox) {
-        const errMsg = document.createElement('div');
-        errMsg.style.cssText = 'background:#fcebeb;border:1.5px solid #f09595;border-radius:.75rem;padding:12px 16px;margin-bottom:12px;font-size:13px;color:#a32d2d';
-        errMsg.textContent = msgs[data.error] || 'Payment verification failed. Please contact support.';
-        upgradeBox.insertBefore(errMsg, upgradeBox.firstChild);
-      }
-      return;
-    }
-
-    // ✓ Verified — unlock PDF
-    _pdfUnlocked = true;
-    sessionStorage.removeItem('pending_session_id');
-
-    const upgradeBox = document.getElementById('upgrade-box');
-    if (upgradeBox) {
-      upgradeBox.innerHTML = '<div style="text-align:center;padding:.5rem 0"><div style="font-size:2rem;margin-bottom:.75rem">&#x2705;</div><h2 style="margin-bottom:.5rem">Payment verified!</h2><p style="margin-bottom:1.5rem">Your PDF report is ready. Click below to download.</p></div>';
-    }
-
-    const pdfBtn = document.getElementById('pdf-btn');
-    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
-
-  } catch (err) {
-    console.error('verifySessionAndUnlock error:', err);
-  }
-}
-
-/* ── PDF Generation ────────────────────────────────────── */
-function generatePDF() {
-  if (!_pdfUnlocked) {
-    alert('Please verify your payment first.');
-    return;
-  }
-  const btn = document.getElementById('pdf-btn');
-  if (btn) { btn.textContent = '⏳ Generating…'; btn.disabled = true; }
-
-  setTimeout(() => {
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      const W = 210, H = 297;
-      const co = document.getElementById('co-name').value || 'Your Company';
-      const industry = document.getElementById('co-industry').value || '';
-      const size = document.getElementById('co-size').value || '';
-      const coDate = document.getElementById('co-date').value || new Date().toISOString().split('T')[0];
-
-      const catScores = CATEGORIES.map(c => ({ cat: c, score: catScore(c) }));
-      const valid = catScores.filter(x => x.score !== null).map(x => x.score);
-      const overall = valid.length ? Math.round(valid.reduce((a,b)=>a+b,0)/valid.length) : 0;
-      const grade = getGrade(overall);
-
-      let gaps = [], partials = [], goods = [];
-      CATEGORIES.forEach(cat => {
-        cat.questions.forEach((q, qi) => {
-          const v = answers[cat.id + '_' + qi];
-          const n = notes[cat.id + '_' + qi] || '';
-          if (v === 'no') gaps.push({ cat: cat.label, q, note: n });
-          else if (v === 'partial') partials.push({ cat: cat.label, q, note: n });
-          else if (v === 'yes') goods.push({ cat: cat.label, q });
-        });
-      });
-
-      const gradeColor = overall >= 80 ? [15,110,86] : overall >= 60 ? [29,158,117] : overall >= 40 ? [186,117,23] : overall >= 20 ? [153,60,29] : [163,45,45];
-      const catColors = {
-        climate:     [15,110,86],
-        environment: [39,80,10],
-        social:      [99,56,6],
-        supply:      [114,36,62],
-        governance:  [12,68,124]
-      };
-
-      function wrapText(doc, text, x, y, maxW, lineH) {
-        const lines = doc.splitTextToSize(text, maxW);
-        lines.forEach(line => { doc.text(line, x, y); y += lineH; });
-        return y;
-      }
-
-      function pageFooter(doc, pageNum) {
-        doc.setFillColor(247,246,243);
-        doc.rect(0, H-12, W, 12, 'F');
-        doc.setFontSize(8);
-        doc.setTextColor(160,158,150);
-        doc.text('myESGcheck.com · ESRS/VSME 2024 aligned · Not legal or financial advice', 14, H-4.5);
-        doc.text('Page ' + pageNum, W-14, H-4.5, { align: 'right' });
-        doc.setTextColor(26,25,22);
-      }
-
-      /* ─── PAGE 1: COVER ─────────────────────────── */
-      // Dark green header
-      doc.setFillColor(4,52,44);
-      doc.rect(0, 0, W, 190, 'F');
-
-      // Logo area
-      doc.setFillColor(15,110,86);
-      doc.roundedRect(14, 14, 14, 14, 2, 2, 'F');
-      doc.setFontSize(8); doc.setTextColor(255,255,255);
-      doc.text('ESG', 16.5, 22.5);
-      doc.setFontSize(11); doc.setFont(undefined,'bold');
-      doc.text('myESGcheck', 32, 23);
-
-      // Eyebrow
-      doc.setFontSize(8); doc.setFont(undefined,'normal');
-      doc.setTextColor(255,255,255,120);
-      doc.text('ESG ASSESSMENT REPORT · ' + coDate, 14, 52);
-
-      // Main heading
-      doc.setFontSize(32); doc.setFont(undefined,'bold');
-      doc.setTextColor(255,255,255);
-      doc.text('Your ESG', 14, 72);
-      doc.text('performance,', 14, 86);
-      doc.setTextColor(79,214,168);
-      doc.text('clearly measured.', 14, 100);
-
-      // Subtext
-      doc.setFontSize(10); doc.setFont(undefined,'normal');
-      doc.setTextColor(200,200,195);
-      const subText = 'A full sustainability assessment for ' + co + ', benchmarked against ESRS and VSME 2024 standards.';
-      wrapText(doc, subText, 14, 116, 140, 6);
-
-      // Score boxes
-      const boxes = [
-        { label: 'Overall ESG Score', val: overall + '', sub: grade.label },
-        { label: 'Industry', val: industry || 'Not specified', sub: size || '' },
-        { label: 'Framework', val: 'ESRS+VSME', sub: 'December 2024' }
-      ];
-      boxes.forEach((box, i) => {
-        const bx = 14 + i * 63;
-        doc.setFillColor(255,255,255,18);
-        doc.roundedRect(bx, 140, 59, 38, 3, 3, 'F');
-        doc.setDrawColor(255,255,255,30);
-        doc.roundedRect(bx, 140, 59, 38, 3, 3, 'S');
-        doc.setFontSize(8); doc.setTextColor(160,160,155);
-        doc.text(box.label, bx+5, 149);
-        doc.setFontSize(i===0?18:11); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-        doc.text(String(box.val).substring(0,18), bx+5, 162);
-        doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(79,214,168);
-        doc.text(box.sub, bx+5, 170);
-      });
-
-      // Bottom meta
-      doc.setFillColor(255,255,255);
-      doc.rect(0, 190, W, H-190, 'F');
-      doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text(co, 14, 207);
-      doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      if (industry) doc.text('Industry: ' + industry + (size ? '  ·  Employees: ' + size : ''), 14, 214);
-      doc.text('Date: ' + coDate, 14, 221);
-
-      // Seal
-      doc.setDrawColor(15,110,86); doc.setLineWidth(1.5);
-      doc.circle(W-28, 208, 16, 'S');
-      doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
-      doc.text('ESRS', W-28, 204, { align: 'center' });
-      doc.text('ALIGNED', W-28, 209, { align: 'center' });
-      doc.text('2024', W-28, 214, { align: 'center' });
-      pageFooter(doc, 1);
-
-      /* ─── PAGE 2: SCORE OVERVIEW ─────────────────── */
-      doc.addPage();
-      doc.setFillColor(255,255,255);
-      doc.rect(0,0,W,H,'F');
-
-      // Header
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-      doc.text('SECTION 1', 14, 20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('Score overview', 14, 30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4);
-      doc.line(14, 34, W-14, 34);
-
-      // Big score circle (drawn with arc approximation)
-      const cx = 50, cy = 75, r = 28;
-      doc.setDrawColor(240,238,234); doc.setLineWidth(5);
-      doc.circle(cx, cy, r, 'S');
-      // Score arc - approximate with filled wedge overlay
-      doc.setDrawColor(...gradeColor); doc.setLineWidth(5);
-      // Draw partial circle for score
-      const startAngle = -Math.PI/2;
-      const endAngle = startAngle + (2*Math.PI * overall/100);
-      const steps = 60;
-      for (let s=0; s<steps; s++) {
-        const a1 = startAngle + (endAngle-startAngle)*s/steps;
-        const a2 = startAngle + (endAngle-startAngle)*(s+1)/steps;
-        doc.setDrawColor(...gradeColor);
-        doc.line(cx+r*Math.cos(a1), cy+r*Math.sin(a1), cx+r*Math.cos(a2), cy+r*Math.sin(a2));
-      }
-      doc.setFontSize(22); doc.setFont(undefined,'bold'); doc.setTextColor(...gradeColor);
-      doc.text(String(overall), cx, cy+4, { align: 'center' });
-      doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-      doc.text('OVERALL', cx, cy+9, { align: 'center' });
-      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(...gradeColor);
-      doc.text(grade.label, cx, cy+15, { align: 'center' });
-
-      // Category bars
-      let by = 48;
-      catScores.forEach(({ cat, score }) => {
-        if (score === null) return;
-        const col = score>=80?[15,110,86]:score>=60?[29,158,117]:score>=40?[186,117,23]:score>=20?[153,60,29]:[163,45,45];
-        const gradeStr = score>=80?'Leading':score>=60?'Progressing':score>=40?'Developing':score>=20?'Starting out':'Needs action';
-        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(cat.icon + ' ' + cat.label, 92, by+3.5);
-        doc.setFillColor(240,238,234);
-        doc.roundedRect(92, by+5, 90, 4, 1, 1, 'F');
-        doc.setFillColor(...col);
-        doc.roundedRect(92, by+5, 90*score/100, 4, 1, 1, 'F');
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(...col);
-        doc.text(score + '%', 186, by+3.5, { align: 'right' });
-        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-        doc.text(gradeStr, W-14, by+3.5, { align: 'right' });
-        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3);
-        doc.line(92, by+12, W-14, by+12);
-        by += 15;
-      });
-
-      // Summary box
-      doc.setFillColor(247,246,243);
-      doc.roundedRect(14, by+5, W-28, 28, 3, 3, 'F');
-      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('What your score means', 20, by+13);
-      doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85); doc.setFontSize(8.5);
-      const scoreDesc = 'A score of ' + overall + '% (' + grade.label + ') means your business has solid foundations in some areas but has clear gaps that need attention. The sections below show exactly where to focus first.';
-      wrapText(doc, scoreDesc, 20, by+20, W-42, 5.5);
-      pageFooter(doc, 2);
-
-      /* ─── PAGE 3: FINDINGS ───────────────────────── */
-      doc.addPage();
-      doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-      doc.text('SECTION 2', 14, 20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('Key findings', 14, 30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4);
-      doc.line(14, 34, W-14, 34);
-      doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      doc.text('Your assessment identified ' + gaps.length + ' gaps, ' + partials.length + ' areas in progress, and ' + goods.length + ' areas strong.', 14, 42);
-
-      let fy = 50;
-      const allFindings = [
-        ...gaps.slice(0,5).map(x=>({...x,type:'gap'})),
-        ...partials.slice(0,4).map(x=>({...x,type:'partial'})),
-        ...goods.slice(0,3).map(x=>({...x,type:'good'}))
-      ];
-      allFindings.forEach(f => {
-        if (fy > H-40) return;
-        const bgColor = f.type==='gap'?[253,244,244]:f.type==='partial'?[254,248,238]:[240,250,246];
-        const borderColor = f.type==='gap'?[240,192,192]:f.type==='partial'?[240,216,160]:[184,224,208];
-        const dotColor = f.type==='gap'?[163,45,45]:f.type==='partial'?[186,117,23]:[15,110,86];
-        const typeLabel = f.type==='gap'?'GAP — NOT IN PLACE':f.type==='partial'?'IN PROGRESS':'STRONG AREA';
-        doc.setFillColor(...bgColor);
-        doc.setDrawColor(...borderColor); doc.setLineWidth(0.4);
-        doc.roundedRect(14, fy, W-28, 22, 2, 2, 'FD');
-        doc.setFillColor(...dotColor);
-        doc.circle(20, fy+7, 2, 'F');
-        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(...dotColor);
-        doc.text(typeLabel, 25, fy+8);
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85);
-        doc.text(f.cat, 25, fy+14);
-        doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-        const qLines = doc.splitTextToSize(f.q, W-52);
-        doc.text(qLines[0], 25, fy+19.5);
-        fy += 26;
-      });
-      pageFooter(doc, 3);
-
-      /* ─── PAGE 4: ACTION PLAN ────────────────────── */
-      doc.addPage();
-      doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-      doc.text('SECTION 3', 14, 20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('Prioritised action plan', 14, 30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4);
-      doc.line(14, 34, W-14, 34);
-
-      // Table header
-      doc.setFillColor(247,246,243);
-      doc.rect(14, 38, W-28, 8, 'F');
-      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
-      ['PRIORITY','AREA','ACTION REQUIRED','TIMELINE'].forEach((h,i) => {
-        const xs = [17,42,82,175];
-        doc.text(h, xs[i], 43.5);
-      });
-
-      const actions = [...gaps.slice(0,5).map(x=>({p:'High',t:'1–3 months',...x})),...partials.slice(0,4).map(x=>({p:'Medium',t:'3–6 months',...x}))].slice(0,8);
-      let ay = 52;
-      actions.forEach((a, i) => {
-        if (ay > H-30) return;
-        if (i%2===0) { doc.setFillColor(252,252,251); doc.rect(14,ay-4,W-28,16,'F'); }
-        const pColor = a.p==='High'?[163,45,45]:[186,117,23];
-        const pBg = a.p==='High'?[253,232,232]:[254,243,226];
-        doc.setFillColor(...pBg);
-        doc.roundedRect(17, ay-3, 22, 6, 1, 1, 'F');
-        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(...pColor);
-        doc.text(a.p, 28, ay+1.5, { align:'center' });
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(a.cat.substring(0,14), 42, ay+1);
-        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85); doc.setFontSize(7.5);
-        const qShort = doc.splitTextToSize(a.q, 86);
-        doc.text(qShort[0], 82, ay+1);
-        doc.setFillColor(240,238,234);
-        doc.roundedRect(170, ay-3, 30, 6, 1, 1, 'F');
-        doc.setFontSize(7); doc.setTextColor(92,90,85);
-        doc.text(a.t, 185, ay+1.5, { align:'center' });
-        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3);
-        doc.line(14, ay+8, W-14, ay+8);
-        ay += 16;
-      });
-      pageFooter(doc, 4);
-
-      /* ─── PAGE 5: AI RECOMMENDATIONS ────────────── */
-      doc.addPage();
-      doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-      doc.text('SECTION 4', 14, 20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('AI-powered recommendations', 14, 30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4);
-      doc.line(14, 34, W-14, 34);
-
-      // AI box
-      doc.setFillColor(240,250,246);
-      doc.setDrawColor(200,232,222); doc.setLineWidth(0.5);
-      doc.roundedRect(14, 38, W-28, 220, 4, 4, 'FD');
-      doc.setFillColor(15,110,86);
-      doc.roundedRect(19, 43, 18, 8, 2, 2, 'F');
-      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-      doc.text('✦ AI', 28, 48.5, { align:'center' });
-      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
-      doc.text('Personalised recommendations for ' + co, 42, 48.5);
-
-      const aiEl = document.getElementById('ai-content');
-      const aiText = aiEl && !aiEl.classList.contains('ai-loading') ? aiEl.textContent : 'AI recommendations will appear here after the assessment is completed.';
-      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-      let aiY = wrapText(doc, aiText, 22, 62, W-44, 5.5);
-
-      pageFooter(doc, 5);
-
-      /* ─── PAGE 6: CATEGORY DEEP DIVE ─────────────── */
-      doc.addPage();
-      doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-      doc.text('SECTION 5', 14, 20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('Category deep dive', 14, 30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4);
-      doc.line(14, 34, W-14, 34);
-
-      const catDetails = [
-        { id:'climate', answers: 'Scope 1 & 2 partially tracked. No Scope 3. Renewable energy not sourced. Reduction target emerging.', ref:'ESRS E1 · GHG Protocol' },
-        { id:'environment', answers: 'Waste tracked. Water monitored. Biodiversity informal. Circular approach started.', ref:'ESRS E2–E5 · VSME B4–B7' },
-        { id:'social', answers: 'H&S policy in place. Leave at legal minimum. Grievance mechanism exists. Workforce data partial.', ref:'ESRS S1 · VSME B8–B10' },
-        { id:'supply', answers: 'No supplier screening. No human rights checks. No ethical clauses in contracts yet.', ref:'ESRS S2 · CSDDD · VSME B11' },
-        { id:'governance', answers: 'Code of conduct in place. Anti-bribery policy communicated. Data protection basic. Stakeholder engagement informal.', ref:'ESRS G1 · VSME B11' }
-      ];
-      let dy = 42;
-      catScores.forEach(({ cat, score }, i) => {
-        if (score === null || dy > H-50) return;
-        const col = score>=80?[15,110,86]:score>=60?[29,158,117]:score>=40?[186,117,23]:score>=20?[153,60,29]:[163,45,45];
-        doc.setDrawColor(232,230,225); doc.setLineWidth(0.4);
-        doc.roundedRect(14, dy, W-28, 40, 3, 3, 'S');
-        doc.setFontSize(14); doc.text(cat.icon, 20, dy+13);
-        doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(cat.label, 30, dy+11);
-        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(...col);
-        doc.text((score===null?'—':score+'%') + ' · ' + getGrade(score).label, 30, dy+18);
-        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-        const detail = catDetails[i] || { answers:'', ref:'' };
-        const lines = doc.splitTextToSize(detail.answers, W-50);
-        lines.slice(0,2).forEach((line, li) => doc.text(line, 30, dy+26+li*5));
-        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
-        doc.text(detail.ref, W-16, dy+35, { align:'right' });
-        dy += 45;
-      });
-      pageFooter(doc, 6);
-
-      /* ─── PAGE 7: ESRS ALIGNMENT ─────────────────── */
-      doc.addPage();
-      doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-      doc.text('SECTION 6', 14, 20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('ESRS / VSME framework alignment', 14, 30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4);
-      doc.line(14, 34, W-14, 34);
-      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      wrapText(doc, 'This assessment maps to the European Sustainability Reporting Standards (ESRS Set 1, EU 2023/2772) and the EFRAG Voluntary SME Standard (VSME, December 2024).', 14, 43, W-28, 5.5);
-
-      const esrsRows = [
-        ['ESRS E1 / VSME B3','Climate change & energy',overall>=60?'Progressing':'Partial coverage'],
-        ['ESRS E2–E5 / VSME B4–B7','Pollution, water, biodiversity, circular economy','Progressing'],
-        ['ESRS S1 / VSME B8–B10','Own workforce & workplace','Progressing'],
-        ['ESRS S2 / VSME B11','Workers in value chain / supply chain','Gaps present'],
-        ['ESRS G1 / VSME B11','Business conduct & governance','Progressing'],
-        ['CSRD (2024/825)','Mandatory reporting readiness','Preparation stage'],
-      ];
-
-      doc.setFillColor(247,246,243); doc.rect(14,55,W-28,8,'F');
-      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
-      doc.text('STANDARD', 18, 60.5);
-      doc.text('TOPIC', 72, 60.5);
-      doc.text('YOUR COVERAGE', 155, 60.5);
-
-      let ey = 70;
-      esrsRows.forEach((row, i) => {
-        if (i%2===0) { doc.setFillColor(252,252,251); doc.rect(14,ey-4,W-28,12,'F'); }
-        const coverageColor = row[2].includes('Gap')?[163,45,45]:row[2].includes('Partial')||row[2].includes('stage')?[186,117,23]:[29,158,117];
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(row[0], 18, ey+2);
-        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-        doc.text(doc.splitTextToSize(row[1],78)[0], 72, ey+2);
-        doc.setFont(undefined,'bold'); doc.setTextColor(...coverageColor);
-        doc.text(row[2], 155, ey+2);
-        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3);
-        doc.line(14, ey+6, W-14, ey+6);
-        ey += 13;
-      });
-
-      // Disclaimer
-      doc.setFillColor(247,246,243);
-      doc.roundedRect(14, ey+8, W-28, 20, 3, 3, 'F');
-      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('Disclaimer', 20, ey+16);
-      doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      wrapText(doc, 'This report is a self-assessment tool and does not constitute formal ESG verification or assurance. Scores are based on your own responses.', 20, ey+22, W-44, 5);
-      pageFooter(doc, 7);
-
-      /* ─── PAGE 8: BACK COVER ─────────────────────── */
-      doc.addPage();
-      doc.setFillColor(4,52,44); doc.rect(0,0,W,H,'F');
-      // Dots pattern
-      for (let px=10; px<W; px+=20) {
-        for (let py=10; py<H; py+=20) {
-          doc.setFillColor(255,255,255,8);
-          doc.circle(px, py, 0.6, 'F');
-        }
-      }
-      doc.setFontSize(32); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-      doc.text('Ready to take', W/2, 105, { align:'center' });
-      doc.text('the next step?', W/2, 120, { align:'center' });
-      doc.setFontSize(11); doc.setFont(undefined,'normal'); doc.setTextColor(180,200,195);
-      wrapText(doc, 'Retake this assessment annually to track your progress. Share this report with investors, customers, or your team.', W/2-65, 138, 130, 6);
-      doc.setFillColor(15,110,86);
-      doc.roundedRect(W/2-40, 165, 80, 14, 7, 7, 'F');
-      doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-      doc.text('myesgcheck.com', W/2, 173.5, { align:'center' });
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(255,255,255,60);
-      doc.text('© 2026 myESGcheck · ESRS Set 1 (EU 2023/2772) · EFRAG VSME December 2024', W/2, H-10, { align:'center' });
-
-      // Save
-      const filename = (co.replace(/[^a-z0-9]/gi,'-').toLowerCase() || 'company') + '-esg-report.pdf';
-      doc.save(filename);
-
-      if (btn) { btn.textContent = '✓ Downloaded!'; btn.disabled = false; setTimeout(()=>{ btn.textContent='📄 Download PDF Report'; }, 3000); }
-
-    } catch(err) {
-      console.error('PDF error:', err);
-      if (btn) { btn.textContent = '📄 Download PDF Report'; btn.disabled = false; }
-      alert('PDF generation failed: ' + err.message);
-    }
-  }, 100);
 }
 
 /* ── Export ────────────────────────────────────────────── */
@@ -1428,30 +1018,207 @@ function restartAll() {
   answers = {}; notes = {}; currentCat = 0;
   document.getElementById('gate-name').value = '';
   document.getElementById('gate-email').value = '';
-  _gdprOn = false;
   document.getElementById('gate-gdpr').checked = false;
-  var gr=document.getElementById('gdpr-row');
-  if(gr){gr.style.borderColor='#ccc';gr.style.background='#f9f9f9';}
-  var box=document.getElementById('custom-check-box');
-  if(box){box.style.background='#ffffff';box.style.borderColor='#888';}
-  var tick=document.getElementById('check-tick');
-  if(tick){tick.style.display='none';}
   showScreen('welcome');
 }
 
-/* ── Theme ─────────────────────────────────────────────── */
-function toggleTheme() {
-  const root = document.documentElement;
-  const cur = root.getAttribute('data-theme');
-  root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
-}
-(function () {
+/* ── Theme ─────────────────────────────────────────────── */(function () {
   if (matchMedia('(prefers-color-scheme: dark)').matches) {
     document.documentElement.setAttribute('data-theme', 'dark');
   }
 })();
 
 // Set today's date
+document.getElementById('co-date').value = new Date().toISOString().split('T')[0];
+
+
+/* ── GDPR Toggle ──────────────────────────────────────────── */
+let _gdprOn = false;
+
+function toggleGDPR(e) {
+  if (e && e.target && e.target.tagName === 'A') return;
+  _gdprOn = !_gdprOn;
+  document.getElementById('gate-gdpr').checked = _gdprOn;
+  var row = document.getElementById('gdpr-row');
+  var box = document.getElementById('custom-check-box');
+  var tick = document.getElementById('check-tick');
+  if (_gdprOn) {
+    row.style.borderColor = '#1d9e75'; row.style.background = '#e1f5ee';
+    box.style.background = '#1d9e75'; box.style.borderColor = '#1d9e75';
+    tick.style.display = 'block';
+  } else {
+    row.style.borderColor = '#ccc'; row.style.background = '#f9f9f9';
+    box.style.background = '#ffffff'; box.style.borderColor = '#888';
+    tick.style.display = 'none';
+  }
+}
+
+/* ── Email Gate ───────────────────────────────────────────── */
+function submitGate() {
+  var name = document.getElementById('gate-name').value.trim();
+  var email = document.getElementById('gate-email').value.trim();
+  var errEl = document.getElementById('gate-err');
+  if (!name || !email || !email.includes('@')) {
+    errEl.textContent = 'Please enter your name and a valid email address.';
+    errEl.style.display = 'block'; return;
+  }
+  if (!_gdprOn) {
+    errEl.textContent = 'Please tick the consent box to continue.';
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+  saveToBrevo(name, email);
+  buildResults(name, email);
+}
+
+/* ── Stripe Paywall ───────────────────────────────────────── */
+let _pdfUnlocked = false;
+
+function checkStripeReturn() {
+  var params = new URLSearchParams(window.location.search);
+  var sessionId = params.get('session_id');
+  if (!sessionId || !sessionId.startsWith('cs_')) return;
+  window.history.replaceState({}, '', window.location.pathname);
+  try {
+    var savedAnswers = localStorage.getItem('esg_answers');
+    var savedNotes = localStorage.getItem('esg_notes');
+    if (savedAnswers) answers = JSON.parse(savedAnswers);
+    if (savedNotes) notes = JSON.parse(savedNotes);
+    var coName = localStorage.getItem('esg_co') || '';
+    var coIndustry = localStorage.getItem('esg_industry') || '';
+    var coSize = localStorage.getItem('esg_size') || '';
+    var coDate = localStorage.getItem('esg_date') || '';
+    var gateName = localStorage.getItem('esg_gate_name') || '';
+    var gateEmail = localStorage.getItem('esg_gate_email') || '';
+    if (document.getElementById('co-name')) document.getElementById('co-name').value = coName;
+    if (document.getElementById('co-industry')) document.getElementById('co-industry').value = coIndustry;
+    if (document.getElementById('co-size')) document.getElementById('co-size').value = coSize;
+    if (document.getElementById('co-date')) document.getElementById('co-date').value = coDate;
+    sessionStorage.setItem('pending_session_id', sessionId);
+    if (Object.keys(answers).length > 0) {
+      buildResults(gateName, gateEmail);
+    } else {
+      showPaymentSuccessBanner();
+    }
+  } catch(e) {
+    sessionStorage.setItem('pending_session_id', sessionId);
+    showPaymentSuccessBanner();
+  }
+}
+checkStripeReturn();
+
+function showPaymentSuccessBanner() {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('screen-results').classList.add('active');
+  var container = document.getElementById('results-container');
+  container.innerHTML = '<div style="max-width:560px;margin:0 auto;padding:2rem 1.25rem;text-align:center"><div style="font-size:3rem;margin-bottom:1rem">&#x2705;</div><h1 style="font-size:1.5rem;font-weight:600;margin-bottom:.5rem">Payment confirmed!</h1><p style="color:var(--muted);margin-bottom:2rem">Your PDF report is ready. Enter your company name and download immediately.</p><div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-xl);padding:1.5rem;text-align:left;margin-bottom:1.5rem"><div style="margin-bottom:1rem"><label style="display:block;font-size:.8125rem;font-weight:500;color:var(--muted);margin-bottom:.375rem">Company name</label><input id="quick-co-name" type="text" placeholder="e.g. Acme Ltd" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.875rem;color:var(--tx)"></div><div><label style="display:block;font-size:.8125rem;font-weight:500;color:var(--muted);margin-bottom:.375rem">Industry (optional)</label><input id="quick-industry" type="text" placeholder="e.g. Construction, Retail" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.875rem;color:var(--tx)"></div></div><button class="btn-primary" style="width:100%;justify-content:center;font-size:1rem;margin-bottom:1rem" onclick="quickDownloadPDF()">&#x1F4C4; Download my PDF report</button><p style="font-size:.8125rem;color:var(--muted)">Or <a href="#" onclick="restartAll();return false" style="color:var(--p)">complete the full assessment</a> for a personalised report.</p></div>';
+  _pdfUnlocked = true;
+}
+
+function quickDownloadPDF() {
+  var coName = document.getElementById('quick-co-name').value || 'Your Company';
+  var industry = document.getElementById('quick-industry').value || '';
+  if (document.getElementById('co-name')) document.getElementById('co-name').value = coName;
+  if (document.getElementById('co-industry')) document.getElementById('co-industry').value = industry;
+  generatePDF();
+}
+
+async function startCheckout(email) {
+  var btn = document.getElementById('stripe-pay-btn');
+  var errEl = document.getElementById('checkout-err');
+  if (btn) { btn.textContent = 'Opening checkout...'; btn.disabled = true; }
+  if (errEl) errEl.style.display = 'none';
+  try {
+    localStorage.setItem('esg_answers', JSON.stringify(answers));
+    localStorage.setItem('esg_notes', JSON.stringify(notes));
+    localStorage.setItem('esg_co', document.getElementById('co-name').value || '');
+    localStorage.setItem('esg_industry', document.getElementById('co-industry').value || '');
+    localStorage.setItem('esg_size', document.getElementById('co-size').value || '');
+    localStorage.setItem('esg_date', document.getElementById('co-date').value || '');
+    localStorage.setItem('esg_gate_name', document.getElementById('gate-name') ? document.getElementById('gate-name').value : '');
+    localStorage.setItem('esg_gate_email', email || '');
+  } catch(e) {}
+  try {
+    var res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email || '' })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.url) {
+      if (errEl) { errEl.textContent = 'Could not open checkout. Please try again.'; errEl.style.display = 'block'; }
+      if (btn) { btn.textContent = 'Get full PDF report \u2014 \u00a319'; btn.disabled = false; }
+      return;
+    }
+    window.location.href = data.url;
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Connection error. Please try again.'; errEl.style.display = 'block'; }
+    if (btn) { btn.textContent = 'Get full PDF report \u2014 \u00a319'; btn.disabled = false; }
+  }
+}
+
+async function verifySessionAndUnlock(sessionId) {
+  try {
+    var res = await fetch('/api/stripe-verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: sessionId })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.valid) {
+      console.warn('Verify failed:', data.error);
+      return;
+    }
+    _pdfUnlocked = true;
+    sessionStorage.removeItem('pending_session_id');
+    var upgradeBox = document.getElementById('upgrade-box');
+    if (upgradeBox) {
+      upgradeBox.innerHTML = '<div style="text-align:center;padding:.5rem 0"><div style="font-size:2rem;margin-bottom:.75rem">&#x2705;</div><h2 style="margin-bottom:.5rem">Payment verified!</h2><p style="margin-bottom:1.5rem">Your PDF report is ready. Click below to download.</p></div>';
+    }
+    var pdfBtn = document.getElementById('pdf-btn');
+    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+  } catch(e) { console.error('verifySessionAndUnlock error:', e); }
+}
+
+/* ── PDF Download Button ─────────────────────────────────── */
+function addPdfButton(visitorEmail) {
+  var exportBtns = document.querySelector('.export-btns');
+  if (!exportBtns) return;
+  exportBtns.innerHTML =
+    '<button class="btn-primary" id="pdf-btn" onclick="generatePDF()" style="display:none">&#x1F4C4; Download PDF Report</button>' +
+    '<div class="upgrade-box" id="upgrade-box" style="width:100%;text-align:center;padding:1.5rem">' +
+    '<h2 style="font-size:1.125rem;font-weight:700;margin-bottom:.5rem">Want a full branded PDF report?</h2>' +
+    '<p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">8-page branded report with AI narrative, action plan, and ESRS alignment.</p>' +
+    '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem;margin-bottom:1.25rem">' +
+    '<span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">\u2713 Branded PDF</span>' +
+    '<span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">\u2713 ESRS/VSME aligned</span>' +
+    '<span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">\u2713 AI narrative</span>' +
+    '<span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">\u2713 Instant download</span>' +
+    '</div>' +
+    '<button class="btn-stripe" id="stripe-pay-btn" onclick="startCheckout(\'' + (visitorEmail||'') + '\')" style="display:inline-flex;align-items:center;gap:.625rem;padding:.875rem 2rem;border-radius:999px;background:#635bff;color:#fff;font-weight:700;font-size:1rem;border:none;cursor:pointer;min-height:52px">' +
+    '\u1F4C4 Get full PDF report \u2014 \u00a319</button>' +
+    '<p id="checkout-err" style="display:none;font-size:.75rem;color:var(--err);margin-top:.5rem"></p>' +
+    '<p style="font-size:.75rem;color:var(--faint);margin-top:.75rem">Secure payment via Stripe \u00b7 Apple Pay, Google Pay, Klarna accepted</p>' +
+    '</div>' +
+    '<button class="btn-secondary" onclick="exportCSV()">\u2B07\uFE0F Export CSV</button>' +
+    '<button class="btn-secondary" onclick="restartAll()">\u21BA Start over</button>';
+
+  var pending = sessionStorage.getItem('pending_session_id');
+  if (pending) verifySessionAndUnlock(pending);
+}
+
+/* ── Theme ───────────────────────────────────────────────── */
+function toggleTheme() {
+  var root = document.documentElement;
+  var cur = root.getAttribute('data-theme');
+  root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+}
+(function() {
+  if (matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+
 document.getElementById('co-date').value = new Date().toISOString().split('T')[0];
 </script>
 </body>
