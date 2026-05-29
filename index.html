@@ -686,9 +686,7 @@ function buildResults(visitorName, visitorEmail) {
 
   showScreen('results');
   callAI(co, industry, size, overall, catScores, gaps, partials);
-  // Auto-verify if returning from Stripe
-  const pendingSession = sessionStorage.getItem('pending_session_id');
-  if (pendingSession) verifySessionAndUnlock(pendingSession);
+
 }
 
 /* ── AI Recommendations ────────────────────────────────── */
@@ -862,25 +860,29 @@ function checkStripeReturn() {
     if (document.getElementById('co-industry')) document.getElementById('co-industry').value = coIndustry;
     if (document.getElementById('co-size')) document.getElementById('co-size').value = coSize;
     if (document.getElementById('co-date')) document.getElementById('co-date').value = coDate;
-    sessionStorage.setItem('pending_session_id', sessionId);
     if (Object.keys(answers).length > 0) {
       buildResults(gateName, gateEmail);
+      // Verify immediately — don't store in sessionStorage
+      verifySessionAndUnlock(sessionId);
     } else {
-      showPaymentSuccessBanner();
+      // No answers — show quick download screen and verify
+      showPaymentSuccessBanner(sessionId);
     }
   } catch(e) {
-    sessionStorage.setItem('pending_session_id', sessionId);
-    showPaymentSuccessBanner();
+    showPaymentSuccessBanner(sessionId);
   }
 }
 checkStripeReturn();
 
-function showPaymentSuccessBanner() {
+function showPaymentSuccessBanner(sessionId) {
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById('screen-results').classList.add('active');
   var container = document.getElementById('results-container');
   container.innerHTML = '<div style="max-width:560px;margin:0 auto;padding:2rem 1.25rem;text-align:center"><div style="font-size:3rem;margin-bottom:1rem">&#x2705;</div><h1 style="font-size:1.5rem;font-weight:600;margin-bottom:.5rem">Payment confirmed!</h1><p style="color:var(--muted);margin-bottom:2rem">Your PDF report is ready. Enter your company name and download immediately.</p><div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-xl);padding:1.5rem;text-align:left;margin-bottom:1.5rem"><div style="margin-bottom:1rem"><label style="display:block;font-size:.8125rem;font-weight:500;color:var(--muted);margin-bottom:.375rem">Company name</label><input id="quick-co-name" type="text" placeholder="e.g. Acme Ltd" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.875rem;color:var(--tx)"></div><div><label style="display:block;font-size:.8125rem;font-weight:500;color:var(--muted);margin-bottom:.375rem">Industry (optional)</label><input id="quick-industry" type="text" placeholder="e.g. Construction, Retail" style="width:100%;padding:.625rem .875rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.875rem;color:var(--tx)"></div></div><button class="btn-primary" style="width:100%;justify-content:center;font-size:1rem;margin-bottom:1rem" onclick="quickDownloadPDF()">&#x1F4C4; Download my PDF report</button><p style="font-size:.8125rem;color:var(--muted)">Or <a href="#" onclick="restartAll();return false" style="color:var(--p)">complete the full assessment</a> for a personalised report.</p></div>';
-  _pdfUnlocked = true;
+  // Verify payment before unlocking
+  if (sessionId) {
+    verifySessionAndUnlock(sessionId);
+  }
 }
 
 function quickDownloadPDF() {
