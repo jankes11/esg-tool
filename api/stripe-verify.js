@@ -1,138 +1,140 @@
 export const config = { runtime: 'edge' };
 
-// In-memory token store (persists per edge instance, ~hours)
-// For production: replace with KV store (Vercel KV / Upstash Redis)
-const validTokens = new Map();
+const tokenStore = new Map();
 
 export default async function handler(req) {
-  const corsHeaders = {
+  const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
   let body;
   try { body = await req.json(); } catch {
     return new Response('Invalid JSON', { status: 400 });
   }
 
-  const { action, sessionId, token } = body;
+  const { action, email, token } = body;
 
-  /* ── ACTION: verify Stripe session ─────────────────────── */
-  if (action === 'verify') {
-    if (!sessionId) {
+  /* ── verify by email ──────────────────────────────────── */
+  if (action === 'verify_email') {
+    if (!email || !email.includes('@')) {
       return new Response(
-        JSON.stringify({ error: 'missing_session' }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        JSON.stringify({ error: 'invalid_email', valid: false }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
     try {
-      // Verify with Stripe API
+      // Search Stripe for recent paid sessions for this email
+      // Look back 24 hours
+      const since = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
+
       const stripeRes = await fetch(
-        `https://api.stripe.com/v1/checkout/sessions/${sessionId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
-          }
-        }
+        `https://api.stripe.com/v1/checkout/sessions?customer_details[email]=${encodeURIComponent(email)}&status=complete&limit=5&created[gte]=${since}`,
+        { headers: { 'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}` } }
       );
 
       if (!stripeRes.ok) {
+        const err = await stripeRes.text();
+        console.error('Stripe error:', err);
         return new Response(
           JSON.stringify({ error: 'stripe_error', valid: false }),
-          { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+          { status: 502, headers: { 'Content-Type': 'application/json', ...cors } }
         );
       }
 
-      const session = await stripeRes.json();
+      const data = await stripeRes.json();
+      const sessions = data.data || [];
 
-      // Check payment is actually completed
-      if (session.payment_status !== 'paid') {
+      // Find a paid session for our product
+      const paidSession = sessions.find(s =>
+        s.payment_status === 'paid' &&
+        s.amount_total >= 1900 // £19.00 in pence
+      );
+
+      if (!paidSession) {
         return new Response(
-          JSON.stringify({ error: 'not_paid', valid: false }),
-          { status: 402, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+          JSON.stringify({ error: 'no_paid_session', valid: false }),
+          { status: 402, headers: { 'Content-Type': 'application/json', ...cors } }
         );
       }
 
-      // Generate a one-time use token
-      const downloadToken = crypto.randomUUID();
-      const expiresAt = Date.now() + (2 * 60 * 60 * 1000); // 2 hours
+      // Check this session hasn't already been used for a download
+      const usedKey = 'used_' + paidSession.id;
+      if (tokenStore.get(usedKey)) {
+        return new Response(
+          JSON.stringify({ error: 'already_used', valid: false }),
+          { status: 409, headers: { 'Content-Type': 'application/json', ...cors } }
+        );
+      }
 
-      validTokens.set(downloadToken, {
-        sessionId,
-        email: session.customer_details?.email || '',
-        expiresAt,
+      // Generate download token
+      const downloadToken = crypto.randomUUID();
+      tokenStore.set(downloadToken, {
+        sessionId: paidSession.id,
+        email,
+        expiresAt: Date.now() + 2 * 60 * 60 * 1000, // 2 hours
         used: false
       });
 
-      // Clean up old tokens (keep map small)
-      for (const [k, v] of validTokens) {
-        if (Date.now() > v.expiresAt) validTokens.delete(k);
+      // Clean expired tokens
+      for (const [k, v] of tokenStore) {
+        if (k.startsWith('used_')) continue;
+        if (Date.now() > v.expiresAt) tokenStore.delete(k);
       }
 
       return new Response(
-        JSON.stringify({ valid: true, token: downloadToken, email: session.customer_details?.email || '' }),
-        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        JSON.stringify({ valid: true, token: downloadToken }),
+        { status: 200, headers: { 'Content-Type': 'application/json', ...cors } }
       );
 
     } catch (err) {
-      console.error('Stripe verify error:', err);
+      console.error('verify_email error:', err);
       return new Response(
         JSON.stringify({ error: 'server_error', valid: false }),
-        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        { status: 500, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
   }
 
-  /* ── ACTION: redeem token ───────────────────────────────── */
+  /* ── redeem token ─────────────────────────────────────── */
   if (action === 'redeem') {
-    if (!token) {
-      return new Response(
-        JSON.stringify({ error: 'missing_token', valid: false }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
+    if (!token) return new Response(
+      JSON.stringify({ error: 'missing_token', valid: false }),
+      { status: 400, headers: { 'Content-Type': 'application/json', ...cors } }
+    );
 
-    const entry = validTokens.get(token);
-
-    if (!entry) {
-      return new Response(
-        JSON.stringify({ error: 'invalid_token', valid: false }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
+    const entry = tokenStore.get(token);
+    if (!entry) return new Response(
+      JSON.stringify({ error: 'invalid_token', valid: false }),
+      { status: 401, headers: { 'Content-Type': 'application/json', ...cors } }
+    );
 
     if (Date.now() > entry.expiresAt) {
-      validTokens.delete(token);
+      tokenStore.delete(token);
       return new Response(
         JSON.stringify({ error: 'token_expired', valid: false }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        { status: 401, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
-    if (entry.used) {
-      return new Response(
-        JSON.stringify({ error: 'token_used', valid: false }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
+    if (entry.used) return new Response(
+      JSON.stringify({ error: 'token_used', valid: false }),
+      { status: 401, headers: { 'Content-Type': 'application/json', ...cors } }
+    );
 
-    // Mark as used (single-use token)
     entry.used = true;
-    validTokens.set(token, entry);
+    tokenStore.set(token, entry);
+    // Mark session as used
+    tokenStore.set('used_' + entry.sessionId, true);
 
     return new Response(
-      JSON.stringify({ valid: true, email: entry.email }),
-      { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      JSON.stringify({ valid: true }),
+      { status: 200, headers: { 'Content-Type': 'application/json', ...cors } }
     );
   }
 
