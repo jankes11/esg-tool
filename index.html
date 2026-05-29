@@ -4,245 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ESG Assessment Tool</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
-/* ── PDF Generation ──────────────────────────────────────── */
-function generatePDF() {
-  if (!_pdfUnlocked) { alert('Please verify your payment first.'); return; }
-  var btn = document.getElementById('pdf-btn');
-  if (btn) { btn.textContent = 'Generating...'; btn.disabled = true; }
-  setTimeout(function() {
-    try {
-      var jsPDF = window.jspdf.jsPDF;
-      var doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      var W = 210, H = 297;
-      var co = document.getElementById('co-name').value || 'Your Company';
-      var industry = document.getElementById('co-industry').value || '';
-      var size = document.getElementById('co-size').value || '';
-      var coDate = document.getElementById('co-date').value || new Date().toISOString().split('T')[0];
-      var catScores2 = CATEGORIES.map(function(c2){ return { cat: c2, score: catScore(c2) }; });
-      var valid = catScores2.filter(function(x){ return x.score !== null; }).map(function(x){ return x.score; });
-      var overall = valid.length ? Math.round(valid.reduce(function(a,b){return a+b;},0)/valid.length) : 0;
-      var grade = getGrade(overall);
-      var gaps = [], partials = [], goods = [];
-      CATEGORIES.forEach(function(cat) {
-        cat.questions.forEach(function(q,qi) {
-          var v = answers[cat.id+'_'+qi], n = notes[cat.id+'_'+qi]||'';
-          if(v==='no') gaps.push({cat:cat.label,q:q,note:n});
-          else if(v==='partial') partials.push({cat:cat.label,q:q,note:n});
-          else if(v==='yes') goods.push({cat:cat.label,q:q});
-        });
-      });
-      var gc = overall>=80?[15,110,86]:overall>=60?[29,158,117]:overall>=40?[186,117,23]:overall>=20?[153,60,29]:[163,45,45];
-
-      function wrap(doc2,text,x,y,maxW,lh) {
-        var lines = doc2.splitTextToSize(text,maxW);
-        lines.forEach(function(l){ doc2.text(l,x,y); y+=lh; });
-        return y;
-      }
-      function foot(doc2,n2) {
-        doc2.setFillColor(247,246,243); doc2.rect(0,H-12,W,12,'F');
-        doc2.setFontSize(8); doc2.setTextColor(160,158,150);
-        doc2.text('myESGcheck.com · ESRS/VSME 2024 · Not legal advice',14,H-4.5);
-        doc2.text('Page '+n2,W-14,H-4.5,{align:'right'});
-        doc2.setTextColor(26,25,22);
-      }
-
-      // PAGE 1: Cover
-      doc.setFillColor(4,52,44); doc.rect(0,0,W,190,'F');
-      doc.setFillColor(15,110,86); doc.roundedRect(14,14,14,14,2,2,'F');
-      doc.setFontSize(8); doc.setTextColor(255,255,255); doc.text('ESG',17,22.5);
-      doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.text('myESGcheck',32,23);
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,160,155);
-      doc.text('ESG ASSESSMENT REPORT · '+coDate,14,52);
-      doc.setFontSize(28); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-      doc.text('Your ESG performance,',14,70); doc.setTextColor(79,214,168);
-      doc.text('clearly measured.',14,84);
-      doc.setFontSize(10); doc.setFont(undefined,'normal'); doc.setTextColor(190,190,185);
-      wrap(doc,'A full sustainability assessment for '+co+', benchmarked against ESRS and VSME 2024.',14,100,160,6);
-      [[overall+'','Overall ESG Score',grade.label],[industry||'N/A','Industry',size||''],[' ESRS+VSME','Framework','Dec 2024']].forEach(function(box,i){
-        var bx=14+i*63;
-        doc.setFillColor(255,255,255,15); doc.roundedRect(bx,130,59,38,3,3,'F');
-        doc.setFontSize(8); doc.setTextColor(150,150,145); doc.text(box[1],bx+5,139);
-        doc.setFontSize(i===0?18:11); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-        doc.text(String(box[0]).substring(0,16),bx+5,152);
-        doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(79,214,168);
-        doc.text(box[2],bx+5,160);
-      });
-      doc.setFillColor(255,255,255); doc.rect(0,190,W,H-190,'F');
-      doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text(co,14,205);
-      doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      if(industry) doc.text('Industry: '+industry+(size?' · Employees: '+size:''),14,212);
-      doc.text('Date: '+coDate,14,219);
-      foot(doc,1);
-
-      // PAGE 2: Scores
-      doc.addPage();
-      doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 1',14,20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Score overview',14,30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
-      // Ring
-      var cx=50,cy=78,r=28,circ=2*Math.PI*r;
-      doc.setDrawColor(240,238,234); doc.setLineWidth(6); doc.circle(cx,cy,r,'S');
-      doc.setDrawColor.apply(doc,gc.concat([])); doc.setLineWidth(6);
-      var steps=60,sa=-Math.PI/2,ea=sa+(2*Math.PI*overall/100);
-      for(var s=0;s<steps;s++){
-        var a1=sa+(ea-sa)*s/steps,a2=sa+(ea-sa)*(s+1)/steps;
-        doc.setDrawColor(gc[0],gc[1],gc[2]);
-        doc.line(cx+r*Math.cos(a1),cy+r*Math.sin(a1),cx+r*Math.cos(a2),cy+r*Math.sin(a2));
-      }
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(gc[0],gc[1],gc[2]);
-      doc.text(String(overall),cx,cy+4,{align:'center'});
-      doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('OVERALL',cx,cy+9,{align:'center'});
-      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(gc[0],gc[1],gc[2]); doc.text(grade.label,cx,cy+15,{align:'center'});
-      // Bars
-      var by=44;
-      catScores2.forEach(function(cs){
-        if(cs.score===null) return;
-        var col=cs.score>=80?[15,110,86]:cs.score>=60?[29,158,117]:cs.score>=40?[186,117,23]:cs.score>=20?[153,60,29]:[163,45,45];
-        var gl=cs.score>=80?'Leading':cs.score>=60?'Progressing':cs.score>=40?'Developing':cs.score>=20?'Starting out':'Needs action';
-        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(cs.cat.icon+' '+cs.cat.label,92,by+3);
-        doc.setFillColor(240,238,234); doc.roundedRect(92,by+5,90,4,1,1,'F');
-        doc.setFillColor(col[0],col[1],col[2]); doc.roundedRect(92,by+5,90*cs.score/100,4,1,1,'F');
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
-        doc.text(cs.score+'%',185,by+3,{align:'right'});
-        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-        doc.text(gl,W-14,by+3,{align:'right'});
-        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3); doc.line(92,by+12,W-14,by+12);
-        by+=15;
-      });
-      foot(doc,2);
-
-      // PAGE 3: Findings
-      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 2',14,20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Key findings',14,30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
-      doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      doc.text('Identified: '+gaps.length+' gaps · '+partials.length+' in progress · '+goods.length+' strong areas',14,42);
-      var fy=50;
-      gaps.slice(0,4).concat(partials.slice(0,3)).concat(goods.slice(0,2)).forEach(function(f,i){
-        if(fy>H-40) return;
-        var isGap=i<gaps.slice(0,4).length, isPart=i>=gaps.slice(0,4).length&&i<gaps.slice(0,4).length+partials.slice(0,3).length;
-        var bg=isGap?[253,244,244]:isPart?[254,248,238]:[240,250,246];
-        var bd=isGap?[240,192,192]:isPart?[240,216,160]:[184,224,208];
-        var dc=isGap?[163,45,45]:isPart?[186,117,23]:[15,110,86];
-        var lbl=isGap?'GAP':isPart?'IN PROGRESS':'STRONG';
-        doc.setFillColor(bg[0],bg[1],bg[2]); doc.setDrawColor(bd[0],bd[1],bd[2]); doc.setLineWidth(0.4);
-        doc.roundedRect(14,fy,W-28,20,2,2,'FD');
-        doc.setFillColor(dc[0],dc[1],dc[2]); doc.circle(20,fy+7,2,'F');
-        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(dc[0],dc[1],dc[2]); doc.text(lbl,25,fy+8);
-        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85); doc.text(f.cat,25,fy+14);
-        doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-        doc.text(doc.splitTextToSize(f.q,W-52)[0],25,fy+19);
-        fy+=24;
-      });
-      foot(doc,3);
-
-      // PAGE 4: Action Plan
-      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 3',14,20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Action plan',14,30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
-      doc.setFillColor(247,246,243); doc.rect(14,38,W-28,8,'F');
-      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
-      ['PRIORITY','AREA','ACTION','TIMELINE'].forEach(function(h,i){doc.text(h,[17,42,82,175][i],43.5);});
-      var acts=gaps.slice(0,5).map(function(x){return Object.assign({p:'High',t:'1-3 months'},x);})
-        .concat(partials.slice(0,3).map(function(x){return Object.assign({p:'Medium',t:'3-6 months'},x);})).slice(0,7);
-      var ay=52;
-      acts.forEach(function(a,i){
-        if(ay>H-30) return;
-        if(i%2===0){doc.setFillColor(252,252,251);doc.rect(14,ay-4,W-28,14,'F');}
-        var pc=a.p==='High'?[163,45,45]:[186,117,23], pb=a.p==='High'?[253,232,232]:[254,243,226];
-        doc.setFillColor(pb[0],pb[1],pb[2]); doc.roundedRect(17,ay-2,22,6,1,1,'F');
-        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(pc[0],pc[1],pc[2]);
-        doc.text(a.p,28,ay+2,{align:'center'});
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(a.cat.substring(0,14),42,ay+2);
-        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85); doc.setFontSize(7.5);
-        doc.text(doc.splitTextToSize(a.q,86)[0],82,ay+2);
-        doc.setFillColor(240,238,234); doc.roundedRect(170,ay-2,30,6,1,1,'F');
-        doc.setFontSize(7); doc.setTextColor(92,90,85); doc.text(a.t,185,ay+2,{align:'center'});
-        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3); doc.line(14,ay+8,W-14,ay+8);
-        ay+=14;
-      });
-      foot(doc,4);
-
-      // PAGE 5: AI Recommendations
-      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 4',14,20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('AI-powered recommendations',14,30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
-      doc.setFillColor(240,250,246); doc.setDrawColor(200,232,222); doc.setLineWidth(0.5);
-      doc.roundedRect(14,38,W-28,220,4,4,'FD');
-      doc.setFillColor(15,110,86); doc.roundedRect(19,43,18,8,2,2,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255); doc.text('AI',28,48.5,{align:'center'});
-      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
-      doc.text('Personalised for '+co,42,48.5);
-      var aiEl=document.getElementById('ai-content');
-      var aiText=aiEl&&!aiEl.classList.contains('ai-loading')?aiEl.innerText:'Complete your assessment to see AI recommendations here.';
-      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-      wrap(doc,aiText,22,60,W-44,5.5);
-      foot(doc,5);
-
-      // PAGE 6: ESRS Alignment
-      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 5',14,20);
-      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('ESRS / VSME alignment',14,30);
-      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
-      var esrsRows=[
-        ['ESRS E1/VSME B3','Climate & energy',overall>=60?'Progressing':'Partial'],
-        ['ESRS E2-E5/VSME B4-B7','Environment','Progressing'],
-        ['ESRS S1/VSME B8-B10','Own workforce','Progressing'],
-        ['ESRS S2/VSME B11','Supply chain',gaps.filter(function(g){return g.cat.includes('Supply');}).length>0?'Gaps present':'Progressing'],
-        ['ESRS G1/VSME B11','Governance','Progressing'],
-      ];
-      doc.setFillColor(247,246,243); doc.rect(14,40,W-28,8,'F');
-      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
-      doc.text('STANDARD',18,45.5); doc.text('TOPIC',72,45.5); doc.text('COVERAGE',155,45.5);
-      var ey=56;
-      esrsRows.forEach(function(row,i){
-        if(i%2===0){doc.setFillColor(252,252,251);doc.rect(14,ey-4,W-28,12,'F');}
-        var cc=row[2].includes('Gap')?[163,45,45]:row[2]==='Partial'?[186,117,23]:[29,158,117];
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text(row[0],18,ey+2);
-        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85); doc.text(row[1],72,ey+2);
-        doc.setFont(undefined,'bold'); doc.setTextColor(cc[0],cc[1],cc[2]); doc.text(row[2],155,ey+2);
-        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3); doc.line(14,ey+6,W-14,ey+6);
-        ey+=13;
-      });
-      doc.setFillColor(247,246,243); doc.roundedRect(14,ey+8,W-28,18,3,3,'F');
-      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Disclaimer',20,ey+15);
-      doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      wrap(doc,'Self-assessment tool only. Does not constitute formal ESG verification or assurance.',20,ey+21,W-44,5);
-      foot(doc,6);
-
-      // PAGE 7: Back Cover
-      doc.addPage(); doc.setFillColor(4,52,44); doc.rect(0,0,W,H,'F');
-      doc.setFontSize(28); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-      doc.text('Ready to take',W/2,110,{align:'center'});
-      doc.text('the next step?',W/2,125,{align:'center'});
-      doc.setFontSize(11); doc.setFont(undefined,'normal'); doc.setTextColor(180,200,195);
-      wrap(doc,'Retake this assessment annually to track your progress. Share with investors, customers, or your team.',W/2-65,142,130,6);
-      doc.setFillColor(15,110,86); doc.roundedRect(W/2-38,165,76,14,7,7,'F');
-      doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-      doc.text('myesgcheck.com',W/2,173.5,{align:'center'});
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(255,255,255,60);
-      doc.text('© 2026 myESGcheck · ESRS Set 1 (EU 2023/2772) · EFRAG VSME Dec 2024',W/2,H-10,{align:'center'});
-
-      var filename=(co.replace(/[^a-z0-9]/gi,'-').toLowerCase()||'company')+'-esg-report.pdf';
-      doc.save(filename);
-      if(btn){btn.textContent='✓ Downloaded!';btn.disabled=false;setTimeout(function(){btn.textContent='📄 Download PDF Report';},3000);}
-    } catch(err) {
-      console.error('PDF error:',err);
-      if(btn){btn.textContent='📄 Download PDF Report';btn.disabled=false;}
-      alert('PDF generation failed: '+err.message);
-    }
-  },100);
-}
-
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1241,6 +1003,241 @@ function toggleTheme() {
 })();
 
 document.getElementById('co-date').value = new Date().toISOString().split('T')[0];
+
+/* ── PDF Generation ──────────────────────────────────────── */
+function generatePDF() {
+  if (!_pdfUnlocked) { alert('Please verify your payment first.'); return; }
+  var btn = document.getElementById('pdf-btn');
+  if (btn) { btn.textContent = 'Generating...'; btn.disabled = true; }
+  setTimeout(function() {
+    try {
+      var jsPDF = window.jspdf.jsPDF;
+      var doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      var W = 210, H = 297;
+      var co = document.getElementById('co-name').value || 'Your Company';
+      var industry = document.getElementById('co-industry').value || '';
+      var size = document.getElementById('co-size').value || '';
+      var coDate = document.getElementById('co-date').value || new Date().toISOString().split('T')[0];
+      var catScores2 = CATEGORIES.map(function(c2){ return { cat: c2, score: catScore(c2) }; });
+      var valid = catScores2.filter(function(x){ return x.score !== null; }).map(function(x){ return x.score; });
+      var overall = valid.length ? Math.round(valid.reduce(function(a,b){return a+b;},0)/valid.length) : 0;
+      var grade = getGrade(overall);
+      var gaps = [], partials = [], goods = [];
+      CATEGORIES.forEach(function(cat) {
+        cat.questions.forEach(function(q,qi) {
+          var v = answers[cat.id+'_'+qi], n = notes[cat.id+'_'+qi]||'';
+          if(v==='no') gaps.push({cat:cat.label,q:q,note:n});
+          else if(v==='partial') partials.push({cat:cat.label,q:q,note:n});
+          else if(v==='yes') goods.push({cat:cat.label,q:q});
+        });
+      });
+      var gc = overall>=80?[15,110,86]:overall>=60?[29,158,117]:overall>=40?[186,117,23]:overall>=20?[153,60,29]:[163,45,45];
+
+      function wrap(doc2,text,x,y,maxW,lh) {
+        var lines = doc2.splitTextToSize(text,maxW);
+        lines.forEach(function(l){ doc2.text(l,x,y); y+=lh; });
+        return y;
+      }
+      function foot(doc2,n2) {
+        doc2.setFillColor(247,246,243); doc2.rect(0,H-12,W,12,'F');
+        doc2.setFontSize(8); doc2.setTextColor(160,158,150);
+        doc2.text('myESGcheck.com · ESRS/VSME 2024 · Not legal advice',14,H-4.5);
+        doc2.text('Page '+n2,W-14,H-4.5,{align:'right'});
+        doc2.setTextColor(26,25,22);
+      }
+
+      // PAGE 1: Cover
+      doc.setFillColor(4,52,44); doc.rect(0,0,W,190,'F');
+      doc.setFillColor(15,110,86); doc.roundedRect(14,14,14,14,2,2,'F');
+      doc.setFontSize(8); doc.setTextColor(255,255,255); doc.text('ESG',17,22.5);
+      doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.text('myESGcheck',32,23);
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,160,155);
+      doc.text('ESG ASSESSMENT REPORT · '+coDate,14,52);
+      doc.setFontSize(28); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('Your ESG performance,',14,70); doc.setTextColor(79,214,168);
+      doc.text('clearly measured.',14,84);
+      doc.setFontSize(10); doc.setFont(undefined,'normal'); doc.setTextColor(190,190,185);
+      wrap(doc,'A full sustainability assessment for '+co+', benchmarked against ESRS and VSME 2024.',14,100,160,6);
+      [[overall+'','Overall ESG Score',grade.label],[industry||'N/A','Industry',size||''],[' ESRS+VSME','Framework','Dec 2024']].forEach(function(box,i){
+        var bx=14+i*63;
+        doc.setFillColor(255,255,255,15); doc.roundedRect(bx,130,59,38,3,3,'F');
+        doc.setFontSize(8); doc.setTextColor(150,150,145); doc.text(box[1],bx+5,139);
+        doc.setFontSize(i===0?18:11); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+        doc.text(String(box[0]).substring(0,16),bx+5,152);
+        doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(79,214,168);
+        doc.text(box[2],bx+5,160);
+      });
+      doc.setFillColor(255,255,255); doc.rect(0,190,W,H-190,'F');
+      doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text(co,14,205);
+      doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      if(industry) doc.text('Industry: '+industry+(size?' · Employees: '+size:''),14,212);
+      doc.text('Date: '+coDate,14,219);
+      foot(doc,1);
+
+      // PAGE 2: Scores
+      doc.addPage();
+      doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 1',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Score overview',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      // Ring
+      var cx=50,cy=78,r=28,circ=2*Math.PI*r;
+      doc.setDrawColor(240,238,234); doc.setLineWidth(6); doc.circle(cx,cy,r,'S');
+      doc.setDrawColor.apply(doc,gc.concat([])); doc.setLineWidth(6);
+      var steps=60,sa=-Math.PI/2,ea=sa+(2*Math.PI*overall/100);
+      for(var s=0;s<steps;s++){
+        var a1=sa+(ea-sa)*s/steps,a2=sa+(ea-sa)*(s+1)/steps;
+        doc.setDrawColor(gc[0],gc[1],gc[2]);
+        doc.line(cx+r*Math.cos(a1),cy+r*Math.sin(a1),cx+r*Math.cos(a2),cy+r*Math.sin(a2));
+      }
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(gc[0],gc[1],gc[2]);
+      doc.text(String(overall),cx,cy+4,{align:'center'});
+      doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('OVERALL',cx,cy+9,{align:'center'});
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(gc[0],gc[1],gc[2]); doc.text(grade.label,cx,cy+15,{align:'center'});
+      // Bars
+      var by=44;
+      catScores2.forEach(function(cs){
+        if(cs.score===null) return;
+        var col=cs.score>=80?[15,110,86]:cs.score>=60?[29,158,117]:cs.score>=40?[186,117,23]:cs.score>=20?[153,60,29]:[163,45,45];
+        var gl=cs.score>=80?'Leading':cs.score>=60?'Progressing':cs.score>=40?'Developing':cs.score>=20?'Starting out':'Needs action';
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(cs.cat.icon+' '+cs.cat.label,92,by+3);
+        doc.setFillColor(240,238,234); doc.roundedRect(92,by+5,90,4,1,1,'F');
+        doc.setFillColor(col[0],col[1],col[2]); doc.roundedRect(92,by+5,90*cs.score/100,4,1,1,'F');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
+        doc.text(cs.score+'%',185,by+3,{align:'right'});
+        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+        doc.text(gl,W-14,by+3,{align:'right'});
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3); doc.line(92,by+12,W-14,by+12);
+        by+=15;
+      });
+      foot(doc,2);
+
+      // PAGE 3: Findings
+      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 2',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Key findings',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      doc.text('Identified: '+gaps.length+' gaps · '+partials.length+' in progress · '+goods.length+' strong areas',14,42);
+      var fy=50;
+      gaps.slice(0,4).concat(partials.slice(0,3)).concat(goods.slice(0,2)).forEach(function(f,i){
+        if(fy>H-40) return;
+        var isGap=i<gaps.slice(0,4).length, isPart=i>=gaps.slice(0,4).length&&i<gaps.slice(0,4).length+partials.slice(0,3).length;
+        var bg=isGap?[253,244,244]:isPart?[254,248,238]:[240,250,246];
+        var bd=isGap?[240,192,192]:isPart?[240,216,160]:[184,224,208];
+        var dc=isGap?[163,45,45]:isPart?[186,117,23]:[15,110,86];
+        var lbl=isGap?'GAP':isPart?'IN PROGRESS':'STRONG';
+        doc.setFillColor(bg[0],bg[1],bg[2]); doc.setDrawColor(bd[0],bd[1],bd[2]); doc.setLineWidth(0.4);
+        doc.roundedRect(14,fy,W-28,20,2,2,'FD');
+        doc.setFillColor(dc[0],dc[1],dc[2]); doc.circle(20,fy+7,2,'F');
+        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(dc[0],dc[1],dc[2]); doc.text(lbl,25,fy+8);
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85); doc.text(f.cat,25,fy+14);
+        doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+        doc.text(doc.splitTextToSize(f.q,W-52)[0],25,fy+19);
+        fy+=24;
+      });
+      foot(doc,3);
+
+      // PAGE 4: Action Plan
+      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 3',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Action plan',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      doc.setFillColor(247,246,243); doc.rect(14,38,W-28,8,'F');
+      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
+      ['PRIORITY','AREA','ACTION','TIMELINE'].forEach(function(h,i){doc.text(h,[17,42,82,175][i],43.5);});
+      var acts=gaps.slice(0,5).map(function(x){return Object.assign({p:'High',t:'1-3 months'},x);})
+        .concat(partials.slice(0,3).map(function(x){return Object.assign({p:'Medium',t:'3-6 months'},x);})).slice(0,7);
+      var ay=52;
+      acts.forEach(function(a,i){
+        if(ay>H-30) return;
+        if(i%2===0){doc.setFillColor(252,252,251);doc.rect(14,ay-4,W-28,14,'F');}
+        var pc=a.p==='High'?[163,45,45]:[186,117,23], pb=a.p==='High'?[253,232,232]:[254,243,226];
+        doc.setFillColor(pb[0],pb[1],pb[2]); doc.roundedRect(17,ay-2,22,6,1,1,'F');
+        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(pc[0],pc[1],pc[2]);
+        doc.text(a.p,28,ay+2,{align:'center'});
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(a.cat.substring(0,14),42,ay+2);
+        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85); doc.setFontSize(7.5);
+        doc.text(doc.splitTextToSize(a.q,86)[0],82,ay+2);
+        doc.setFillColor(240,238,234); doc.roundedRect(170,ay-2,30,6,1,1,'F');
+        doc.setFontSize(7); doc.setTextColor(92,90,85); doc.text(a.t,185,ay+2,{align:'center'});
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3); doc.line(14,ay+8,W-14,ay+8);
+        ay+=14;
+      });
+      foot(doc,4);
+
+      // PAGE 5: AI Recommendations
+      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 4',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('AI-powered recommendations',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      doc.setFillColor(240,250,246); doc.setDrawColor(200,232,222); doc.setLineWidth(0.5);
+      doc.roundedRect(14,38,W-28,220,4,4,'FD');
+      doc.setFillColor(15,110,86); doc.roundedRect(19,43,18,8,2,2,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255); doc.text('AI',28,48.5,{align:'center'});
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+      doc.text('Personalised for '+co,42,48.5);
+      var aiEl=document.getElementById('ai-content');
+      var aiText=aiEl&&!aiEl.classList.contains('ai-loading')?aiEl.innerText:'Complete your assessment to see AI recommendations here.';
+      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+      wrap(doc,aiText,22,60,W-44,5.5);
+      foot(doc,5);
+
+      // PAGE 6: ESRS Alignment
+      doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150); doc.text('SECTION 5',14,20);
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('ESRS / VSME alignment',14,30);
+      doc.setDrawColor(232,230,225); doc.setLineWidth(0.4); doc.line(14,34,W-14,34);
+      var esrsRows=[
+        ['ESRS E1/VSME B3','Climate & energy',overall>=60?'Progressing':'Partial'],
+        ['ESRS E2-E5/VSME B4-B7','Environment','Progressing'],
+        ['ESRS S1/VSME B8-B10','Own workforce','Progressing'],
+        ['ESRS S2/VSME B11','Supply chain',gaps.filter(function(g){return g.cat.includes('Supply');}).length>0?'Gaps present':'Progressing'],
+        ['ESRS G1/VSME B11','Governance','Progressing'],
+      ];
+      doc.setFillColor(247,246,243); doc.rect(14,40,W-28,8,'F');
+      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
+      doc.text('STANDARD',18,45.5); doc.text('TOPIC',72,45.5); doc.text('COVERAGE',155,45.5);
+      var ey=56;
+      esrsRows.forEach(function(row,i){
+        if(i%2===0){doc.setFillColor(252,252,251);doc.rect(14,ey-4,W-28,12,'F');}
+        var cc=row[2].includes('Gap')?[163,45,45]:row[2]==='Partial'?[186,117,23]:[29,158,117];
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text(row[0],18,ey+2);
+        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85); doc.text(row[1],72,ey+2);
+        doc.setFont(undefined,'bold'); doc.setTextColor(cc[0],cc[1],cc[2]); doc.text(row[2],155,ey+2);
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.3); doc.line(14,ey+6,W-14,ey+6);
+        ey+=13;
+      });
+      doc.setFillColor(247,246,243); doc.roundedRect(14,ey+8,W-28,18,3,3,'F');
+      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22); doc.text('Disclaimer',20,ey+15);
+      doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      wrap(doc,'Self-assessment tool only. Does not constitute formal ESG verification or assurance.',20,ey+21,W-44,5);
+      foot(doc,6);
+
+      // PAGE 7: Back Cover
+      doc.addPage(); doc.setFillColor(4,52,44); doc.rect(0,0,W,H,'F');
+      doc.setFontSize(28); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('Ready to take',W/2,110,{align:'center'});
+      doc.text('the next step?',W/2,125,{align:'center'});
+      doc.setFontSize(11); doc.setFont(undefined,'normal'); doc.setTextColor(180,200,195);
+      wrap(doc,'Retake this assessment annually to track your progress. Share with investors, customers, or your team.',W/2-65,142,130,6);
+      doc.setFillColor(15,110,86); doc.roundedRect(W/2-38,165,76,14,7,7,'F');
+      doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('myesgcheck.com',W/2,173.5,{align:'center'});
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(255,255,255,60);
+      doc.text('© 2026 myESGcheck · ESRS Set 1 (EU 2023/2772) · EFRAG VSME Dec 2024',W/2,H-10,{align:'center'});
+
+      var filename=(co.replace(/[^a-z0-9]/gi,'-').toLowerCase()||'company')+'-esg-report.pdf';
+      doc.save(filename);
+      if(btn){btn.textContent='✓ Downloaded!';btn.disabled=false;setTimeout(function(){btn.textContent='📄 Download PDF Report';},3000);}
+    } catch(err) {
+      console.error('PDF error:',err);
+      if(btn){btn.textContent='📄 Download PDF Report';btn.disabled=false;}
+      alert('PDF generation failed: '+err.message);
+    }
+  },100);
+}
 </script>
-</body>
-</html>
