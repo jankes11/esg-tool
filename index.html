@@ -799,6 +799,7 @@ function buildResults(visitorName, visitorEmail) {
   const co = document.getElementById('co-name').value || 'Your Company';
   const industry = document.getElementById('co-industry').value || '';
   const size = document.getElementById('co-size').value || '';
+  const coDate = document.getElementById('co-date').value || new Date().toISOString().split('T')[0];
 
   const catScores = CATEGORIES.map(c => ({ cat: c, score: catScore(c) }));
   const valid = catScores.filter(x => x.score !== null).map(x => x.score);
