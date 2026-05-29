@@ -720,14 +720,14 @@ function buildResults(visitorName, visitorEmail) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Get full PDF report — £19
         </a>
-        <div id="session-input" style="display:none;margin-top:12px;padding:14px;background:var(--plight);border:1.5px solid var(--p);border-radius:var(--r-lg)">
-          <p style="font-size:13px;font-weight:500;margin-bottom:8px;color:var(--p)">✓ Paid? Paste your Order ID to unlock your PDF</p>
-          <p style="font-size:11px;color:var(--muted);margin-bottom:10px">After payment, Stripe shows you an Order ID (starts with <code style="background:var(--off);padding:1px 4px;border-radius:3px">cs_</code>). Paste it below.</p>
+        <div id="session-input" style="display:none;margin-top:12px;padding:16px;background:var(--plight);border:1.5px solid var(--p);border-radius:var(--r-lg)">
+          <p style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--p)">✓ Already paid? Enter your email to unlock your PDF</p>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Enter the same email address you used when paying on Stripe. We'll verify your payment automatically.</p>
           <div style="display:flex;gap:8px">
-            <input id="session-id-input" type="text" placeholder="cs_live_..." style="flex:1;padding:8px 12px;border:1.5px solid var(--bdr);border-radius:var(--r-md);font-size:13px;background:var(--surf)">
-            <button class="btn-primary" style="padding:8px 16px;font-size:13px" onclick="verifyAndDownload()">Unlock PDF →</button>
+            <input id="verify-email-input" type="email" placeholder="you@yourcompany.com" style="flex:1;padding:8px 12px;border:1.5px solid var(--bdr);border-radius:var(--r-md);font-size:13px;background:var(--surf)">
+            <button class="btn-primary" style="padding:8px 16px;font-size:13px;white-space:nowrap" onclick="verifyAndDownload()">Unlock PDF →</button>
           </div>
-          <p id="verify-err" style="display:none;font-size:12px;color:var(--err);margin-top:6px"></p>
+          <p id="verify-err" style="display:none;font-size:12px;color:var(--err);margin-top:8px"></p>
         </div>
         <p class="upgrade-note">Secure payment via Stripe · Apple Pay, Google Pay, Klarna accepted</p>
       </div>
@@ -813,12 +813,12 @@ function handleStripeClick(e) {
 }
 
 async function verifyAndDownload() {
-  const sessionId = document.getElementById('session-id-input').value.trim();
+  const email = document.getElementById('verify-email-input').value.trim();
   const errEl = document.getElementById('verify-err');
   const btn = document.querySelector('#session-input .btn-primary');
 
-  if (!sessionId || !sessionId.startsWith('cs_')) {
-    errEl.textContent = 'Please paste a valid Stripe Order ID (starts with cs_)';
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Please enter a valid email address.';
     errEl.style.display = 'block';
     return;
   }
@@ -830,44 +830,40 @@ async function verifyAndDownload() {
     const res = await fetch('/api/stripe-verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'verify', sessionId })
+      body: JSON.stringify({ action: 'verify_email', email })
     });
 
     const data = await res.json();
 
     if (!res.ok || !data.valid) {
       const msgs = {
-        not_paid: 'Payment not completed yet. Please finish the Stripe checkout first.',
-        stripe_error: 'Could not verify payment. Please check your Order ID.',
-        token_used: 'This order has already been used to download a report.',
-        token_expired: 'Your download link has expired. Please contact support.'
+        no_paid_session: 'No completed payment found for this email in the last 24 hours. Please check you used the correct email address.',
+        already_used: 'This payment has already been used to download a report. Contact support if you need help.',
+        stripe_error: 'Could not verify payment. Please try again in a moment.',
+        server_error: 'Something went wrong. Please try again.'
       };
-      errEl.textContent = msgs[data.error] || 'Verification failed. Please try again.';
+      errEl.textContent = msgs[data.error] || 'Payment not found. Please use the same email you paid with.';
       errEl.style.display = 'block';
       if (btn) { btn.textContent = 'Unlock PDF →'; btn.disabled = false; }
       return;
     }
 
-    // Payment verified — store token and unlock PDF
+    // Verified — unlock PDF
     _pdfUnlocked = true;
     sessionStorage.setItem('pdf_token', data.token);
 
-    // Hide paywall, show download button
     document.getElementById('session-input').style.display = 'none';
     document.getElementById('stripe-pay-btn').style.display = 'none';
-    const pdfBtn = document.getElementById('pdf-btn');
-    if (pdfBtn) {
-      pdfBtn.style.display = 'inline-flex';
-      pdfBtn.style.animation = 'none';
-    }
 
-    // Show success message
+    const pdfBtn = document.getElementById('pdf-btn');
+    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+
     const upgradeBox = document.querySelector('.upgrade-box');
     if (upgradeBox) {
-      const successMsg = document.createElement('div');
-      successMsg.style.cssText = 'background:#e1f5ee;border:1.5px solid #1d9e75;border-radius:.75rem;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#085041;font-weight:500';
-      successMsg.textContent = '✓ Payment verified! Click the button below to download your PDF report.';
-      upgradeBox.insertBefore(successMsg, upgradeBox.querySelector('.export-btns') || upgradeBox.lastChild);
+      const msg = document.createElement('div');
+      msg.style.cssText = 'background:#e1f5ee;border:1.5px solid #1d9e75;border-radius:.75rem;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#085041;font-weight:500;text-align:center';
+      msg.textContent = '✓ Payment verified! Your PDF report is ready to download.';
+      upgradeBox.insertBefore(msg, pdfBtn.parentNode);
     }
 
     if (btn) { btn.textContent = 'Unlock PDF →'; btn.disabled = false; }
