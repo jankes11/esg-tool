@@ -134,12 +134,17 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
 .gate-field label{display:block;font-weight:500;font-size:.8125rem;margin-bottom:.375rem;color:var(--muted)}
 .gate-field input{width:100%;padding:.75rem 1rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.9375rem}
 .gate-field input:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px rgba(15,110,86,.1)}
-.gdpr-row{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:1.5rem;text-align:left;background:var(--off);border:1.5px solid var(--bdr);border-radius:var(--r-lg);padding:.875rem 1rem;cursor:pointer}
+.gdpr-row{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:1.5rem;text-align:left;padding:.875rem 1rem;border:2px solid var(--bdr);border-radius:var(--r-lg);cursor:pointer;background:var(--surf2)}
 .gdpr-row:hover{border-color:var(--p)}
-.gdpr-row input[type="checkbox"]{width:18px;height:18px;min-width:18px;margin-top:.15rem;flex-shrink:0;accent-color:var(--p);cursor:pointer;appearance:auto;-webkit-appearance:checkbox}
-.gdpr-row label{font-size:.8125rem;color:var(--muted);line-height:1.55;cursor:pointer}
-.gdpr-row a{color:var(--p);text-decoration:underline}
-.gate-err{color:var(--err);font-size:.8125rem;margin-bottom:.875rem;display:none}
+.gdpr-row input[type="checkbox"]{position:absolute;opacity:0;width:0;height:0}
+.custom-check{width:20px;height:20px;min-width:20px;border:2px solid var(--muted);border-radius:4px;display:flex;align-items:center;justify-content:center;margin-top:.1rem;flex-shrink:0;background:var(--surf);transition:all .15s}
+.custom-check svg{display:none;width:12px;height:12px}
+.gdpr-row.gdpr-checked{border-color:var(--p);background:var(--plight)}
+.gdpr-row.gdpr-checked .custom-check{background:var(--p);border-color:var(--p)}
+.gdpr-row.gdpr-checked .custom-check svg{display:block}
+.gdpr-row label{font-size:.8125rem;color:var(--muted);line-height:1.55;cursor:pointer;user-select:none}
+.gdpr-row a{color:var(--p);text-decoration:underline;pointer-events:auto}
+.gate-err{color:var(--err);font-size:.8125rem;margin-bottom:.875rem;display:none;padding:.5rem .75rem;background:rgba(163,45,45,.08);border-radius:var(--r-md)}
 
 /* ─── RESULTS ─────────────────────────────────────────────── */
 .results-hero{text-align:center;padding:2.5rem 1rem 2rem}
@@ -308,9 +313,14 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
         <label for="gate-email">Work email address</label>
         <input id="gate-email" type="email" placeholder="you@yourcompany.com" autocomplete="email">
       </div>
-      <div class="gdpr-row" onclick="document.getElementById('gate-gdpr').click();event.stopPropagation()">
-        <input type="checkbox" id="gate-gdpr" onclick="event.stopPropagation()">
-        <label for="gate-gdpr" onclick="event.stopPropagation()">I agree to receive my ESG report and occasional tips on improving sustainability performance. I can unsubscribe at any time. See our <a href="/privacy" target="_blank">Privacy Policy</a>.</label>
+      <div class="gdpr-row" id="gdpr-row" onclick="toggleGDPR()">
+        <input type="checkbox" id="gate-gdpr">
+        <div class="custom-check" id="custom-check">
+          <svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="1.5,6 4.5,9.5 10.5,2.5"/>
+          </svg>
+        </div>
+        <label>I agree to receive my ESG report and occasional tips on improving sustainability performance. I can unsubscribe at any time. See our <a href="/privacy" target="_blank" onclick="event.stopPropagation()">Privacy Policy</a>.</label>
       </div>
       <p class="gate-err" id="gate-err">Please fill in all fields and tick the checkbox above.</p>
       <button class="btn-primary" style="width:100%;justify-content:center;font-size:1rem" onclick="submitGate()">Show my results →</button>
@@ -517,10 +527,19 @@ function goToCat(idx) {
 }
 
 /* ── Email Gate ────────────────────────────────────────── */
+let gdprChecked = false;
+
+function toggleGDPR() {
+  gdprChecked = !gdprChecked;
+  const row = document.getElementById('gdpr-row');
+  const cb = document.getElementById('gate-gdpr');
+  cb.checked = gdprChecked;
+  row.classList.toggle('gdpr-checked', gdprChecked);
+}
+
 function submitGate() {
   const name = document.getElementById('gate-name').value.trim();
   const email = document.getElementById('gate-email').value.trim();
-  const gdpr = document.getElementById('gate-gdpr').checked;
   const errEl = document.getElementById('gate-err');
 
   if (!name || !email || !email.includes('@')) {
@@ -528,8 +547,8 @@ function submitGate() {
     errEl.style.display = 'block';
     return;
   }
-  if (!gdpr) {
-    errEl.textContent = 'Please tick the consent checkbox to continue.';
+  if (!gdprChecked) {
+    errEl.textContent = 'Please tick the consent box above to continue.';
     errEl.style.display = 'block';
     return;
   }
@@ -799,9 +818,11 @@ function exportCSV() {
 
 function restartAll() {
   answers = {}; notes = {}; currentCat = 0;
+  gdprChecked = false;
   document.getElementById('gate-name').value = '';
   document.getElementById('gate-email').value = '';
   document.getElementById('gate-gdpr').checked = false;
+  document.getElementById('gdpr-row').classList.remove('gdpr-checked');
   showScreen('welcome');
 }
 
