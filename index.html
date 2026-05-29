@@ -910,10 +910,27 @@ function buildResults(visitorName, visitorEmail) {
         <p class="upgrade-note">Secure payment via Stripe · Apple Pay, Google Pay, Klarna accepted</p>
       </div>
 
-      <div class="export-btns">
-        <button class="btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
-        <button class="btn-secondary" onclick="exportCSV()">⬇️ Export CSV</button>
-        <button class="btn-secondary" onclick="restartAll()">↺ Start over</button>
+      <div class="upgrade-box" id="upgrade-box" style="text-align:center;padding:1.5rem;background:var(--surf);border:2px solid var(--p);border-radius:var(--r-xl);margin:2rem 0;box-shadow:var(--sh-md)">
+        <h2 style="font-size:1.1875rem;font-weight:700;margin-bottom:.5rem">Want a full branded PDF report?</h2>
+        <p style="color:var(--muted);font-size:.9375rem;margin-bottom:1rem;max-width:44ch;margin-inline:auto">8-page branded report with AI narrative, action plan, and ESRS alignment — ready to share with stakeholders.</p>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem;margin-bottom:1.25rem">
+          <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">&#x2713; Branded PDF</span>
+          <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">&#x2713; ESRS/VSME aligned</span>
+          <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">&#x2713; AI narrative</span>
+          <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">&#x2713; Instant download</span>
+        </div>
+        <button id="stripe-pay-btn" onclick="startCheckout('${visitorEmail}')" style="display:inline-flex;align-items:center;gap:.625rem;padding:.875rem 2rem;border-radius:999px;background:#635bff;color:#fff;font-weight:700;font-size:1rem;border:none;cursor:pointer;min-height:52px">
+          &#x1F4C4; Get full PDF report &mdash; &pound;19
+        </button>
+        <p id="checkout-err" style="display:none;font-size:.75rem;color:var(--err);margin-top:.5rem"></p>
+        <p style="font-size:.75rem;color:var(--faint);margin-top:.75rem">Secure payment via Stripe &middot; Apple Pay, Google Pay, Klarna accepted</p>
+      </div>
+
+      <button class="btn-primary" id="pdf-btn" onclick="generatePDF()" style="display:none;margin:0 auto 1rem;justify-content:center">&#x1F4C4; Download PDF Report</button>
+
+      <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin:1rem 0">
+        <button class="btn-secondary" onclick="exportCSV()">&#x2B07;&#xFE0F; Export CSV</button>
+        <button class="btn-secondary" onclick="restartAll()">&#x21BA; Start over</button>
       </div>
 
       <p class="legal-note">Aligned with ESRS Set 1 (EU 2023/2772) and EFRAG VSME Standard (December 2024) · All data stays in your browser</p>
@@ -921,6 +938,9 @@ function buildResults(visitorName, visitorEmail) {
 
   showScreen('results');
   callAI(co, industry, size, overall, catScores, gaps, partials);
+  // Auto-verify if returning from Stripe
+  const pendingSession = sessionStorage.getItem('pending_session_id');
+  if (pendingSession) verifySessionAndUnlock(pendingSession);
 }
 
 /* ── AI Recommendations ────────────────────────────────── */
