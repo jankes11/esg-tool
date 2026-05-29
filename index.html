@@ -805,15 +805,58 @@ let _pdfUnlocked = false;
 function checkStripeReturn() {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get('session_id');
-  if (sessionId && sessionId.startsWith('cs_')) {
-    // Remove session_id from URL (clean up)
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, '', cleanUrl);
-    // Store and auto-verify
+  if (!sessionId || !sessionId.startsWith('cs_')) return;
+
+  // Clean URL immediately
+  window.history.replaceState({}, '', window.location.pathname);
+
+  // Restore saved assessment data
+  try {
+    const savedAnswers = localStorage.getItem('esg_answers');
+    const savedNotes = localStorage.getItem('esg_notes');
+    if (savedAnswers) answers = JSON.parse(savedAnswers);
+    if (savedNotes) notes = JSON.parse(savedNotes);
+
+    const coName = localStorage.getItem('esg_co') || '';
+    const coIndustry = localStorage.getItem('esg_industry') || '';
+    const coSize = localStorage.getItem('esg_size') || '';
+    const coDate = localStorage.getItem('esg_date') || '';
+    const gateName = localStorage.getItem('esg_gate_name') || '';
+    const gateEmail = localStorage.getItem('esg_gate_email') || '';
+
+    // Restore form values
+    if (document.getElementById('co-name')) document.getElementById('co-name').value = coName;
+    if (document.getElementById('co-industry')) document.getElementById('co-industry').value = coIndustry;
+    if (document.getElementById('co-size')) document.getElementById('co-size').value = coSize;
+    if (document.getElementById('co-date')) document.getElementById('co-date').value = coDate;
+
+    // Build results and verify payment
+    if (Object.keys(answers).length > 0) {
+      buildResults(gateName, gateEmail);
+      // verifySessionAndUnlock is called inside buildResults via pending_session check
+      sessionStorage.setItem('pending_session_id', sessionId);
+    } else {
+      // No saved answers — show payment success message on welcome screen
+      sessionStorage.setItem('pending_session_id', sessionId);
+      showPaymentSuccessBanner();
+    }
+  } catch(e) {
+    console.warn('Could not restore assessment data:', e);
     sessionStorage.setItem('pending_session_id', sessionId);
-    // Will verify once results screen is shown
+    showPaymentSuccessBanner();
   }
 }
+
+function showPaymentSuccessBanner() {
+  // Show a banner on welcome screen telling user to complete the assessment
+  const hero = document.querySelector('.hero');
+  if (!hero) return;
+  const banner = document.createElement('div');
+  banner.style.cssText = 'background:#e1f5ee;border:2px solid #1d9e75;border-radius:.75rem;padding:16px 20px;margin-bottom:24px;text-align:left';
+  banner.innerHTML = '<div style="font-size:15px;font-weight:600;color:#085041;margin-bottom:6px">✅ Payment received — thank you!</div><div style="font-size:13px;color:#0f6e56;line-height:1.6">Your PDF report is unlocked. Please complete the assessment to generate and download your personalised report. Your progress will be saved automatically.</div>';
+  hero.insertBefore(banner, hero.firstChild);
+}
+
 checkStripeReturn();
 
 async function startCheckout(email) {
@@ -835,6 +878,18 @@ async function startCheckout(email) {
       if (btn) { btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Get full PDF report — £19'; btn.disabled = false; }
       return;
     }
+
+    // Save all assessment data before leaving the page
+    try {
+      localStorage.setItem('esg_answers', JSON.stringify(answers));
+      localStorage.setItem('esg_notes', JSON.stringify(notes));
+      localStorage.setItem('esg_co', document.getElementById('co-name').value || '');
+      localStorage.setItem('esg_industry', document.getElementById('co-industry').value || '');
+      localStorage.setItem('esg_size', document.getElementById('co-size').value || '');
+      localStorage.setItem('esg_date', document.getElementById('co-date').value || '');
+      localStorage.setItem('esg_gate_name', document.getElementById('gate-name') ? document.getElementById('gate-name').value : '');
+      localStorage.setItem('esg_gate_email', email || '');
+    } catch(e) { console.warn('Could not save to localStorage:', e); }
 
     // Redirect to Stripe Checkout
     window.location.href = data.url;
