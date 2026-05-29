@@ -706,7 +706,7 @@ function buildResults(visitorName, visitorEmail) {
         </div>
       </div>
 
-      <div class="upgrade-box">
+      <div class="upgrade-box" id="upgrade-box">
         <h2>Want a full branded PDF report?</h2>
         <p>Get a professional 8-page report with your scores, AI narrative, action plan, and ESRS alignment — ready to share with investors, customers, or your team.</p>
         <div class="upgrade-features">
@@ -716,19 +716,11 @@ function buildResults(visitorName, visitorEmail) {
           <span class="uf">✓ Benchmark context</span>
           <span class="uf">✓ Instant download</span>
         </div>
-        <a class="btn-stripe" id="stripe-pay-btn" href="${buildStripeUrl(visitorEmail)}" target="_blank" onclick="handleStripeClick(event)">
+        <button class="btn-stripe" id="stripe-pay-btn" onclick="startCheckout('${visitorEmail}')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Get full PDF report — £19
-        </a>
-        <div id="session-input" style="display:none;margin-top:12px;padding:16px;background:var(--plight);border:1.5px solid var(--p);border-radius:var(--r-lg)">
-          <p style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--p)">✓ Already paid? Enter your email to unlock your PDF</p>
-          <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Enter the same email address you used when paying on Stripe. We'll verify your payment automatically.</p>
-          <div style="display:flex;gap:8px">
-            <input id="verify-email-input" type="email" placeholder="you@yourcompany.com" style="flex:1;padding:8px 12px;border:1.5px solid var(--bdr);border-radius:var(--r-md);font-size:13px;background:var(--surf)">
-            <button class="btn-primary" style="padding:8px 16px;font-size:13px;white-space:nowrap" onclick="verifyAndDownload()">Unlock PDF →</button>
-          </div>
-          <p id="verify-err" style="display:none;font-size:12px;color:var(--err);margin-top:8px"></p>
-        </div>
+        </button>
+        <p id="checkout-err" style="display:none;font-size:12px;color:var(--err);margin-top:8px"></p>
         <p class="upgrade-note">Secure payment via Stripe · Apple Pay, Google Pay, Klarna accepted</p>
       </div>
 
@@ -743,6 +735,9 @@ function buildResults(visitorName, visitorEmail) {
 
   showScreen('results');
   callAI(co, industry, size, overall, catScores, gaps, partials);
+  // Auto-verify if returning from Stripe
+  const pendingSession = sessionStorage.getItem('pending_session_id');
+  if (pendingSession) verifySessionAndUnlock(pendingSession);
 }
 
 /* ── AI Recommendations ────────────────────────────────── */
@@ -798,80 +793,97 @@ async function callAI(co, industry, size, overall, catScores, gaps, partials) {
 /* ── Stripe Paywall ─────────────────────────────────────── */
 let _pdfUnlocked = false;
 
-function buildStripeUrl(email) {
-  let url = CONFIG.STRIPE_LINK;
-  if (email) url += '?prefilled_email=' + encodeURIComponent(email);
-  return url;
-}
-
-function handleStripeClick(e) {
-  // After opening Stripe, show the session input after 3 seconds
-  setTimeout(() => {
-    const si = document.getElementById('session-input');
-    if (si) si.style.display = 'block';
-  }, 3000);
-}
-
-async function verifyAndDownload() {
-  const email = document.getElementById('verify-email-input').value.trim();
-  const errEl = document.getElementById('verify-err');
-  const btn = document.querySelector('#session-input .btn-primary');
-
-  if (!email || !email.includes('@')) {
-    errEl.textContent = 'Please enter a valid email address.';
-    errEl.style.display = 'block';
-    return;
+// Called on page load — check if returning from Stripe with session_id in URL
+function checkStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session_id');
+  if (sessionId && sessionId.startsWith('cs_')) {
+    // Remove session_id from URL (clean up)
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, '', cleanUrl);
+    // Store and auto-verify
+    sessionStorage.setItem('pending_session_id', sessionId);
+    // Will verify once results screen is shown
   }
+}
+checkStripeReturn();
 
-  errEl.style.display = 'none';
-  if (btn) { btn.textContent = 'Verifying…'; btn.disabled = true; }
+async function startCheckout(email) {
+  const btn = document.getElementById('stripe-pay-btn');
+  const errEl = document.getElementById('checkout-err');
+  if (btn) { btn.textContent = '⏳ Opening checkout…'; btn.disabled = true; }
+  if (errEl) errEl.style.display = 'none';
 
+  try {
+    const res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email || '' })
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.url) {
+      if (errEl) { errEl.textContent = 'Could not open checkout. Please try again.'; errEl.style.display = 'block'; }
+      if (btn) { btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Get full PDF report — £19'; btn.disabled = false; }
+      return;
+    }
+
+    // Redirect to Stripe Checkout
+    window.location.href = data.url;
+
+  } catch (err) {
+    if (errEl) { errEl.textContent = 'Connection error. Please try again.'; errEl.style.display = 'block'; }
+    if (btn) { btn.textContent = 'Get full PDF report — £19'; btn.disabled = false; }
+  }
+}
+
+async function verifySessionAndUnlock(sessionId) {
   try {
     const res = await fetch('/api/stripe-verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'verify_email', email })
+      body: JSON.stringify({ sessionId })
     });
-
     const data = await res.json();
 
     if (!res.ok || !data.valid) {
       const msgs = {
-        no_paid_session: 'No completed payment found for this email in the last 24 hours. Please check you used the correct email address.',
-        already_used: 'This payment has already been used to download a report. Contact support if you need help.',
-        stripe_error: 'Could not verify payment. Please try again in a moment.',
-        server_error: 'Something went wrong. Please try again.'
+        not_paid: 'Payment not completed. Please finish the checkout.',
+        already_used: 'This payment has already been used to generate a report.',
+        wrong_amount: 'Payment amount does not match. Please contact support.',
+        stripe_error: 'Could not verify payment. Please try again.',
       };
-      errEl.textContent = msgs[data.error] || 'Payment not found. Please use the same email you paid with.';
-      errEl.style.display = 'block';
-      if (btn) { btn.textContent = 'Unlock PDF →'; btn.disabled = false; }
+      console.warn('Verify failed:', data.error);
+      const upgradeBox = document.getElementById('upgrade-box');
+      if (upgradeBox) {
+        const errMsg = document.createElement('div');
+        errMsg.style.cssText = 'background:#fcebeb;border:1.5px solid #f09595;border-radius:.75rem;padding:12px 16px;margin-bottom:12px;font-size:13px;color:#a32d2d';
+        errMsg.textContent = msgs[data.error] || 'Payment verification failed. Please contact support.';
+        upgradeBox.insertBefore(errMsg, upgradeBox.firstChild);
+      }
       return;
     }
 
-    // Verified — unlock PDF
+    // ✓ Verified — unlock PDF
     _pdfUnlocked = true;
-    sessionStorage.setItem('pdf_token', data.token);
+    sessionStorage.removeItem('pending_session_id');
 
-    document.getElementById('session-input').style.display = 'none';
-    document.getElementById('stripe-pay-btn').style.display = 'none';
+    const upgradeBox = document.getElementById('upgrade-box');
+    if (upgradeBox) {
+      upgradeBox.innerHTML = \`
+        <div style="text-align:center;padding:.5rem 0">
+          <div style="font-size:2rem;margin-bottom:.75rem">✅</div>
+          <h2 style="margin-bottom:.5rem">Payment verified!</h2>
+          <p style="margin-bottom:1.5rem">Your PDF report is ready. Click below to download.</p>
+        </div>
+      \`;
+    }
 
     const pdfBtn = document.getElementById('pdf-btn');
     if (pdfBtn) pdfBtn.style.display = 'inline-flex';
 
-    const upgradeBox = document.querySelector('.upgrade-box');
-    if (upgradeBox) {
-      const msg = document.createElement('div');
-      msg.style.cssText = 'background:#e1f5ee;border:1.5px solid #1d9e75;border-radius:.75rem;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#085041;font-weight:500;text-align:center';
-      msg.textContent = '✓ Payment verified! Your PDF report is ready to download.';
-      upgradeBox.insertBefore(msg, pdfBtn.parentNode);
-    }
-
-    if (btn) { btn.textContent = 'Unlock PDF →'; btn.disabled = false; }
-
   } catch (err) {
-    errEl.textContent = 'Connection error. Please try again.';
-    errEl.style.display = 'block';
-    if (btn) { btn.textContent = 'Unlock PDF →'; btn.disabled = false; }
+    console.error('verifySessionAndUnlock error:', err);
   }
 }
 
