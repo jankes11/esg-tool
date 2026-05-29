@@ -249,14 +249,14 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
       <h1>How sustainable is your business, really?</h1>
       <p>Answer 41 plain-English questions across 5 areas, get your ESG score, and receive an AI-powered action plan — in about 20 minutes.</p>
       <div class="cat-grid">
-        <div class="cat-pill"><div class="icon">🌡️</div><span class="name">Climate</span><span class="qs">6 questions</span></div>
-        <div class="cat-pill"><div class="icon">🌿</div><span class="name">Environment</span><span class="qs">7 questions</span></div>
-        <div class="cat-pill"><div class="icon">🤝</div><span class="name">Your People</span><span class="qs">7 questions</span></div>
-        <div class="cat-pill"><div class="icon">🔗</div><span class="name">Supply Chain</span><span class="qs">5 questions</span></div>
-        <div class="cat-pill"><div class="icon">💼</div><span class="name">Governance</span><span class="qs">8 questions</span></div>
+        <div class="cat-pill"><div class="icon">🌡️</div><span class="name">Climate</span><span class="qs">7 questions</span></div>
+        <div class="cat-pill"><div class="icon">🌿</div><span class="name">Environment</span><span class="qs">8 questions</span></div>
+        <div class="cat-pill"><div class="icon">🤝</div><span class="name">Your People</span><span class="qs">9 questions</span></div>
+        <div class="cat-pill"><div class="icon">🔗</div><span class="name">Supply Chain</span><span class="qs">7 questions</span></div>
+        <div class="cat-pill"><div class="icon">💼</div><span class="name">Governance</span><span class="qs">10 questions</span></div>
       </div>
       <button class="btn-primary" onclick="showScreen('company')">Start assessment →</button>
-      <p class="hero-note">No login · No jargon · Aligned with ESRS/VSME 2024 · Results stay in your browser</p>
+      <p class="hero-note">No login · No jargon · 41 questions · Aligned with ESRS/VSME 2024 · Results stay in your browser</p>
     </div>
   </div>
 </div>
@@ -350,7 +350,8 @@ const CATEGORIES = [
       'Have you thought about how things like extreme weather, rising energy costs, or new environmental regulations could affect your business in the next few years?',
       'Do you have any goals or a rough plan to reduce your energy use or carbon emissions — even if it\'s just a target to work towards?',
       'Have you actually changed anything — like switching to LED lighting, reducing business flights, or choosing a greener supplier — specifically to lower your environmental impact?',
-      'Do any of the energy sources you use — such as electricity, heating, or fuel — come from renewable or low-carbon providers?'
+      'Do any of the energy sources you use — such as electricity, heating, or fuel — come from renewable or low-carbon providers?',
+      'Do you communicate your environmental goals or progress to your employees, customers, or suppliers — for example through your website, newsletters, or annual updates?'
     ]
   },
   {
@@ -364,7 +365,8 @@ const CATEGORIES = [
       'Do you keep track of how much waste your business produces, and have you taken any steps to cut it down — such as reducing packaging, recycling more, or reusing materials?',
       'Do you know whether your business premises, operations, or supply chain are near any nature reserves, rivers, or protected habitats — and have you taken any steps to avoid harming them?',
       'Do you try to design or source products and packaging so they last longer, can be repaired, or are made from recycled materials — rather than being single-use or sent straight to landfill?',
-      'Do you monitor how much water your business uses, and have you taken any steps to use less or to avoid polluting water sources nearby?'
+      'Do you monitor how much water your business uses, and have you taken any steps to use less or to avoid polluting water sources nearby?',
+      'Have you had any environmental incidents — such as a spill, illegal waste disposal, or pollution complaint — and if so, did you report it and take action to prevent it happening again?'
     ]
   },
   {
@@ -378,7 +380,9 @@ const CATEGORIES = [
       'Does your business do anything to give back to the local community — such as hiring locally, supporting charities, volunteering, or partnering with local organisations?',
       'Is there a safe and easy way for your employees or others to raise concerns about how your business behaves — for example a complaints process, an open-door policy, or an anonymous reporting line?',
       'Do you regularly share information with your staff about how the business is doing — including any plans that could affect their jobs or working conditions?',
-      'Do you track any basic workforce data — such as how many people leave each year, the split between full-time and part-time staff, or the gender balance across your team?'
+      'Do you track any basic workforce data — such as how many people leave each year, the split between full-time and part-time staff, or the gender balance across your team?',
+      'Do you offer your employees any training, development opportunities, or support to help them grow their skills — beyond what is legally required?',
+      'Do you pay all your employees at least the real Living Wage, and do you review pay regularly to make sure it is fair across different groups of staff?'
     ]
   },
   {
@@ -390,7 +394,9 @@ const CATEGORIES = [
       'Have you ever checked whether any of your suppliers could be involved in serious issues like forced labour, child labour, or unsafe working conditions — even if only at a basic level?',
       'Do your contracts or buying terms with suppliers include any requirements around ethical conduct, working conditions, or environmental standards?',
       'Do you make any effort to buy from local businesses, small suppliers, or companies owned by people from underrepresented groups — rather than always going with the biggest or cheapest option?',
-      'When choosing new suppliers, do you look at their environmental and social track record — not just their price and quality?'
+      'When choosing new suppliers, do you look at their environmental and social track record — not just their price and quality?',
+      'Do you have a Modern Slavery statement or any policy that addresses the risk of forced labour, trafficking, or exploitation in your business or supply chain?',
+      'Do you give smaller or local suppliers a fair chance to win your business — for example through open tendering, prompt payment, or reasonable contract terms?'
     ]
   },
   {
@@ -405,7 +411,9 @@ const CATEGORIES = [
       'Do you have basic data protection practices in place — such as knowing what personal data you hold, who can access it, and what you\'d do if there was a data breach?',
       'Before introducing a new product, service, or way of working, do you think through any possible downsides — for example to people\'s health, jobs, privacy, or the environment?',
       'Do you actively involve employees, customers, or community members in decisions that affect them — for example through surveys, meetings, or feedback channels?',
-      'Has your business had any serious ethical incidents in the past three years — such as a bribery case, regulatory fine, or major data breach — and if so, was it properly investigated and resolved?'
+      'Has your business had any serious ethical incidents in the past three years — such as a bribery case, regulatory fine, or major data breach — and if so, was it properly investigated and resolved?',
+      'Do you have a whistleblowing policy or a confidential way for employees to report wrongdoing without fear of losing their job or being treated unfairly?',
+      'Do you pay your taxes in the countries where you genuinely do business, and do you avoid artificial arrangements designed purely to reduce your tax bill?'
     ]
   }
 ];
@@ -870,13 +878,7 @@ async function verifySessionAndUnlock(sessionId) {
 
     const upgradeBox = document.getElementById('upgrade-box');
     if (upgradeBox) {
-      upgradeBox.innerHTML = \`
-        <div style="text-align:center;padding:.5rem 0">
-          <div style="font-size:2rem;margin-bottom:.75rem">✅</div>
-          <h2 style="margin-bottom:.5rem">Payment verified!</h2>
-          <p style="margin-bottom:1.5rem">Your PDF report is ready. Click below to download.</p>
-        </div>
-      \`;
+      upgradeBox.innerHTML = '<div style="text-align:center;padding:.5rem 0"><div style="font-size:2rem;margin-bottom:.75rem">&#x2705;</div><h2 style="margin-bottom:.5rem">Payment verified!</h2><p style="margin-bottom:1.5rem">Your PDF report is ready. Click below to download.</p></div>';
     }
 
     const pdfBtn = document.getElementById('pdf-btn');
