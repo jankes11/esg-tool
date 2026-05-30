@@ -1131,7 +1131,7 @@ document.addEventListener('keydown', function(e) {
 ──────────────────────────────────────────────────────────── */
 
 function getBusinessImpact(score, industry) {
-  var ind = safe(industry).toLowerCase();
+  var ind = (industry||'').replace(/[^\x00-\xFF]/g,'?').toLowerCase();
   var isConstruct = ind.indexOf('construct') > -1 || ind.indexOf('build') > -1 || ind.indexOf('civil') > -1;
   var items = [];
   if (score >= 60) {
