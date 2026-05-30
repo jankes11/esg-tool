@@ -1321,7 +1321,8 @@ function generatePDF() {
         if (ri%2===0) { doc.setFillColor(250,250,249); } else { doc.setFillColor(255,255,255); }
         doc.rect(M, ym-2, W-2*M, 11, 'F');
         doc.setFontSize(8); doc.setFont(undefined, ri===0||ri===1?'bold':'normal');
-        doc.setTextColor(ri===2?[163,45,45]:ri===1?[186,117,23]:ri===0?[15,110,86]:[130,128,122]);
+        var tRowColor = ri===2?[163,45,45]:ri===1?[186,117,23]:ri===0?[15,110,86]:[130,128,122];
+        doc.setTextColor(tRowColor[0],tRowColor[1],tRowColor[2]);
         doc.text(safe(row[0]), tX[0]+3, ym+5);
         doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
         doc.text(safe(row[1]), tX[1]+3, ym+5);
