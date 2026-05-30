@@ -27,6 +27,16 @@
   --tx:#d4d2ce;--muted:#918f89;--faint:#505049;--inv:#1c1b19;
   --p:#4f98a3;--ph:#227f8b;--pa:#1a626b;--plight:#1e3533;
 }
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background:var(--surf2)!important;
+  color:var(--tx)!important;
+  border-color:rgba(255,255,255,.12)!important;
+  color-scheme:dark;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {color:var(--faint)!important}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:none}
 body{min-height:100dvh;font-family:var(--font);font-size:15px;color:var(--tx);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
@@ -275,17 +285,17 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
       <h2>Tell us about your business</h2>
       <p class="sub">This personalises your report. Everything stays in your browser — nothing is sent anywhere.</p>
       <div class="field-grid">
-        <div class="field"><label for="co-name">Company name</label><input id="co-name" type="text" placeholder="e.g. Acme Ltd"></div>
-        <div class="field"><label for="co-industry">Industry / sector</label><input id="co-industry" type="text" placeholder="e.g. Construction, Retail, IT Services"></div>
+        <div class="field"><label for="co-name">Company name</label><input id="co-name" type="text" placeholder="e.g. Acme Ltd" style="background:var(--surf2);color:var(--tx)"></div>
+        <div class="field"><label for="co-industry">Industry / sector</label><input id="co-industry" type="text" placeholder="e.g. Construction, Retail, IT Services" style="background:var(--surf2);color:var(--tx)"></div>
         <div class="field"><label for="co-size">Number of employees</label>
-          <select id="co-size">
+          <select id="co-size" style="background:var(--surf2);color:var(--tx)">
             <option value="">Select…</option>
             <option>1–10</option><option>11–49</option><option>50–249</option><option>250+</option>
           </select>
         </div>
-        <div class="field"><label for="co-assessor">Your name (optional)</label><input id="co-assessor" type="text" placeholder="Person completing this"></div>
+        <div class="field"><label for="co-assessor">Your name (optional)</label><input id="co-assessor" type="text" placeholder="Person completing this" style="background:var(--surf2);color:var(--tx)"></div>
       </div>
-      <div class="field" style="max-width:220px"><label for="co-date">Date</label><input id="co-date" type="date"></div>
+      <div class="field" style="max-width:220px"><label for="co-date">Date</label><input id="co-date" type="date" style="background:var(--surf2);color:var(--tx)"></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:.625rem">
       <button class="btn-secondary" onclick="showScreen('welcome')">← Back</button>
@@ -308,11 +318,11 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
       <p>Enter your email to unlock your full ESG score, category breakdown, and AI-powered recommendations.</p>
       <div class="gate-field">
         <label for="gate-name">First name</label>
-        <input id="gate-name" type="text" placeholder="Your first name" autocomplete="given-name">
+        <input id="gate-name" type="text" placeholder="Your first name" autocomplete="given-name" style="background:var(--surf2);color:var(--tx);border-color:var(--bdr)">
       </div>
       <div class="gate-field">
         <label for="gate-email">Work email address</label>
-        <input id="gate-email" type="email" placeholder="you@yourcompany.com" autocomplete="email">
+        <input id="gate-email" type="email" placeholder="you@yourcompany.com" autocomplete="email" style="background:var(--surf2);color:var(--tx);border-color:var(--bdr)">
       </div>
       <div id="gdpr-row" onclick="toggleGDPR(event)" style="display:flex;flex-direction:row;align-items:flex-start;gap:12px;margin-bottom:20px;padding:14px 16px;border:2px solid var(--bdr);border-radius:12px;cursor:pointer;background:var(--surf2);text-align:left;width:100%;box-sizing:border-box">
         <input type="checkbox" id="gate-gdpr" style="position:absolute;opacity:0;width:0;height:0">
@@ -1004,6 +1014,12 @@ document.getElementById('co-date').value = new Date().toISOString().split('T')[0
    Designed to produce a genuinely useful 8-page ESG report.
 ──────────────────────────────────────────────────────────── */
 
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
 function generatePDF() {
   if (!_pdfUnlocked) { alert('Please verify your payment first.'); return; }
   var btn = document.getElementById('pdf-btn');
@@ -1334,39 +1350,56 @@ function generatePDF() {
       // Convert questions to action statements
       function questionToAction(q) {
         var s = safe(q);
-        // Rephrase question into imperative action statement
-        s = s.replace(/^Do you know /i,'Measure and document ');
-        s = s.replace(/^Do you check /i,'Check and record ');
-        s = s.replace(/^Do you have /i,'Implement ');
-        s = s.replace(/^Do you offer /i,'Introduce ');
-        s = s.replace(/^Do you track /i,'Start tracking ');
-        s = s.replace(/^Do you monitor /i,'Monitor and record ');
-        s = s.replace(/^Do you pay /i,'Review pay and ensure ');
-        s = s.replace(/^Do you actively /i,'Actively ');
-        s = s.replace(/^Do you try /i,'Develop a plan to ');
-        s = s.replace(/^Do you keep /i,'Track and record ');
-        s = s.replace(/^Do you make /i,'Establish a policy to ');
-        s = s.replace(/^Do you give /i,'Give ');
-        s = s.replace(/^Do you /i,'Establish ');
-        s = s.replace(/^Have you looked /i,'Map your ');
-        s = s.replace(/^Have you thought about /i,'Assess ');
-        s = s.replace(/^Have you actually /i,'Take action: ');
-        s = s.replace(/^Have you ever /i,'Conduct a ');
-        s = s.replace(/^Have you had /i,'Document and address ');
-        s = s.replace(/^Have you /i,'Implement ');
-        s = s.replace(/^Is there a /i,'Create a ');
-        s = s.replace(/^Is there /i,'Establish ');
-        s = s.replace(/^Are your /i,'Ensure ');
-        s = s.replace(/^Does your business have /i,'Implement ');
-        s = s.replace(/^Does your business /i,'Ensure your business ');
-        s = s.replace(/^Has your business had /i,'Review and address any ');
-        s = s.replace(/^Has your business /i,'Ensure ');
-        s = s.replace(/^When choosing /i,'Evaluate ');
-        s = s.replace(/^Before /i,'Before launching, assess ');
-        // Clean up double spaces
-        s = s.replace(/  +/g, ' ').trim();
-        // Capitalise first letter
-        s = s.charAt(0).toUpperCase() + s.slice(1);
+        // Map question patterns to clear imperative actions
+        var transforms = [
+          [/^Do you know roughly how much energy/i, 'Measure your energy consumption and estimate your greenhouse gas emissions.'],
+          [/^Have you looked beyond your own premises/i, 'Map your carbon footprint beyond your premises: deliveries, travel, and key suppliers.'],
+          [/^Have you thought about how things like extreme weather/i, 'Assess climate-related risks to your business: energy costs, extreme weather, and new regulations.'],
+          [/^Do you have any goals or a rough plan to reduce/i, 'Set a documented target to reduce your energy use or carbon emissions.'],
+          [/^Have you actually changed anything/i, 'Take concrete action to reduce your environmental impact: lighting, travel, or greener suppliers.'],
+          [/^Do any of the energy sources/i, 'Switch at least one energy source to a renewable or low-carbon provider.'],
+          [/^Do you communicate your environmental goals/i, 'Publish your environmental goals on your website or in staff communications.'],
+          [/^Do you check whether any of the materials/i, 'Review your key materials and supplies for environmental or pollution risks.'],
+          [/^Have you thought about the environmental impact of what/i, 'Assess the full lifecycle environmental impact of your products or services.'],
+          [/^Do you actively manage how much energy/i, 'Actively manage and monitor energy, water, and waste from your premises.'],
+          [/^Do you keep track of how much waste/i, 'Track your waste output and implement a waste reduction plan.'],
+          [/^Do you know whether your business premises/i, 'Check if your sites or supply chain are near protected habitats and take steps to avoid harm.'],
+          [/^Do you try to design or source products/i, 'Adopt a circular approach: longer-lasting products, recycled materials, less single-use packaging.'],
+          [/^Do you monitor how much water/i, 'Monitor your water consumption and implement water reduction measures.'],
+          [/^Have you had any environmental incidents/i, 'Document any past environmental incidents and ensure corrective actions are in place.'],
+          [/^Do you have anything in place to protect your employees/i, 'Implement a formal health and safety policy with named responsible person and regular risk assessments.'],
+          [/^Do you offer your employees at least/i, 'Review your parental leave policy to ensure it meets legal minimum and is actively encouraged.'],
+          [/^Are your products or services described honestly/i, 'Audit your customer communications for accuracy, including environmental and safety claims.'],
+          [/^Does your business do anything to give back/i, 'Establish a structured community contribution: local hiring, charity partnership, or volunteering.'],
+          [/^Is there a safe and easy way for your employees/i, 'Create a formal grievance or whistleblowing mechanism accessible to all staff.'],
+          [/^Do you regularly share information with your staff/i, 'Implement regular staff briefings on business performance and plans that affect them.'],
+          [/^Do you track any basic workforce data/i, 'Start tracking key workforce metrics: turnover, gender balance, full-time vs part-time ratio.'],
+          [/^Do you offer your employees any training/i, 'Introduce a structured training and development programme for all staff.'],
+          [/^Do you pay all your employees at least the real Living Wage/i, 'Review pay against the real Living Wage and conduct a pay equity audit.'],
+          [/^Do you have any process for checking whether your main suppliers/i, 'Introduce a supplier assessment process covering labour rights, health and safety, and environment.'],
+          [/^Have you ever checked whether any of your suppliers/i, 'Conduct a basic human rights due diligence review of your top 5 suppliers.'],
+          [/^Do your contracts or buying terms with suppliers/i, 'Add ethical conduct, labour standards, and environmental requirements to all supplier contracts.'],
+          [/^Do you make any effort to buy from local/i, 'Establish an inclusive procurement policy that actively considers local and minority-owned suppliers.'],
+          [/^When choosing new suppliers/i, 'Incorporate ESG criteria into your supplier selection process alongside price and quality.'],
+          [/^Do you have a Modern Slavery statement/i, 'Produce a Modern Slavery statement and implement a policy covering forced labour and trafficking risks.'],
+          [/^Do you give smaller or local suppliers/i, 'Implement fair procurement practices: open tendering, 30-day payment terms, reasonable contracts.'],
+          [/^Does your business have written guidelines/i, 'Implement a written code of conduct covering ethics, gifts, conflicts of interest, and decision-making.'],
+          [/^Does your business have a clear rule.*bribery/i, 'Adopt a formal anti-bribery policy and communicate it to all staff.'],
+          [/^Is there a specific person in your business/i, 'Appoint a named sustainability lead responsible for ESG risk management and reporting.'],
+          [/^Do you share any information about your sustainability/i, 'Publish a brief sustainability statement on your website or in your annual review.'],
+          [/^Do you have basic data protection practices/i, 'Implement GDPR-compliant data protection procedures including a record of processing activities.'],
+          [/^Before introducing a new product/i, 'Introduce an impact assessment process before launching new products, services, or operations.'],
+          [/^Do you actively involve employees/i, 'Create formal channels for stakeholder engagement: staff surveys, customer feedback, community consultation.'],
+          [/^Has your business had any serious ethical incidents/i, 'Review any past ethical incidents and ensure formal investigation and remediation processes are in place.'],
+          [/^Do you have a whistleblowing policy/i, 'Implement a confidential whistleblowing policy protecting staff from retaliation.'],
+          [/^Do you pay your taxes/i, 'Review your tax arrangements to ensure compliance and alignment with responsible tax principles.'],
+        ];
+        for (var t=0; t<transforms.length; t++) {
+          if (transforms[t][0].test(s)) return transforms[t][1];
+        }
+        // Fallback: clean up question into imperative
+        s = s.replace(/^Do you /i,'').replace(/^Have you /i,'').replace(/^Is there /i,'').replace(/^Are your /i,'').replace(/^Does your /i,'').replace(/^Has your /i,'').replace(/^When /i,'').replace(/\?$/, '');
+        s = s.charAt(0).toUpperCase() + s.slice(1) + '.';
         return s;
       }
 
@@ -1640,6 +1673,7 @@ function generatePDF() {
     }
   }, 150);
 }
+
 
 
 
