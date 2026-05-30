@@ -71,15 +71,17 @@ ${partialList || 'None identified'}
 Write a short, practical improvement plan using plain English — no jargon. Three sections:
 
 1. Quick wins (next 1–3 months)
-2–3 specific, concrete actions that target their actual gaps. Name real tools or frameworks if helpful (e.g. GHG Protocol, ISO 14001).
+2–3 specific, concrete actions that target their actual gaps. Name real tools or frameworks if helpful (e.g. GHG Protocol, ISO 14001). Do NOT suggest specific percentage targets or year-based deadlines.
 
 2. Bigger priorities (next 6–12 months)
 2–3 medium-term actions. Keep them realistic for a ${size || 'small'} business in ${industry || 'their sector'}.
 
-3. Where they stand
-1–2 sentences of honest context: how does a ${size || 'small'} ${industry || 'business'} at ${overall}% compare to peers, and what do the better ones do differently?
+3. What stronger performers typically do
+1–2 sentences describing the practices that organisations with stronger ESG performance typically have in place — without inventing benchmark scores, sector averages, or year targets.
 
-Keep the whole response under 200 words. Be direct and encouraging — not preachy.`;
+IMPORTANT: Do not invent benchmark numbers, sector averages, percentage comparisons, or year-based targets (e.g. "2035", "2040", "60-70%", "top quartile"). Stick to observable practices.
+
+Keep the whole response under 220 words. Be direct and encouraging — not preachy.`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
