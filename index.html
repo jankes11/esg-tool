@@ -1537,6 +1537,47 @@ function generatePDF() {
       else if (overall < 60) scoreDesc += 'At this score, you are likely to satisfy many basic customer ESG questionnaires, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
       else if (overall < 80) scoreDesc += 'You are performing well. At this score, you are well-placed to respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
       else scoreDesc += 'You are performing at a leading level. Your ESG performance is a genuine competitive advantage for winning contracts and demonstrating responsibility to customers and investors.';
+      // Score breakdown table
+      var sb_table_y = sb_y + 36;
+      if (sb_table_y < H - 55) {
+        doc.setFillColor(247,246,243);
+        doc.rect(M, sb_table_y, W-2*M, 7, 'F');
+        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+        doc.text('AREA', M+3, sb_table_y+5);
+        doc.text('SCORE', M+88, sb_table_y+5);
+        doc.text('WEIGHT', M+115, sb_table_y+5);
+        doc.text('CONTRIBUTION', M+142, sb_table_y+5);
+        var sbt_y = sb_table_y + 9;
+        var totalContrib = 0;
+        catScoresArr.forEach(function(cs, ci) {
+          var sc = cs.score === null ? 0 : cs.score;
+          var contrib = (sc * 0.2).toFixed(1);
+          totalContrib += parseFloat(contrib);
+          if (ci%2===0) { doc.setFillColor(252,252,251); doc.rect(M, sbt_y-2, W-2*M, 8, 'F'); }
+          doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34);
+          doc.text(safe(cs.cat.label), M+3, sbt_y+3.5);
+          var scCol = scoreColorArr(cs.score);
+          doc.setFont(undefined,'bold'); doc.setTextColor(scCol[0],scCol[1],scCol[2]);
+          doc.text(cs.score===null?'N/A':sc+'%', M+88, sbt_y+3.5);
+          doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+          doc.text('20%', M+115, sbt_y+3.5);
+          doc.setTextColor(40,38,34);
+          doc.text(contrib+' pts', M+142, sbt_y+3.5);
+          doc.setDrawColor(232,230,225); doc.setLineWidth(0.2);
+          doc.line(M, sbt_y+6, W-M, sbt_y+6);
+          sbt_y += 9;
+        });
+        doc.setFillColor(240,238,234); doc.rect(M, sbt_y-2, W-2*M, 8, 'F');
+        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('Overall score', M+3, sbt_y+3.5);
+        doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.text(overall+'%', M+88, sbt_y+3.5);
+        doc.setTextColor(130,128,122); doc.setFont(undefined,'normal');
+        doc.text('100%', M+115, sbt_y+3.5);
+        doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.text(totalContrib.toFixed(1)+' pts', M+142, sbt_y+3.5);
+      }
+
       var lowestCat = catScoresArr.reduce(function(a,b){
         if (a.score===null) return b; if (b.score===null) return a;
         return a.score < b.score ? a : b;
@@ -1572,8 +1613,10 @@ function generatePDF() {
 
       // Gaps
       if (gaps.length > 0) {
+        var shownGaps = Math.min(gaps.length, 6);
+        var gapHdr = gaps.length > 6 ? 'GAPS — Not yet in place (showing '+shownGaps+' of '+gaps.length+')' : 'GAPS — Not yet in place';
         doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(163,45,45);
-        doc.text('GAPS — Not yet in place', M, fy); fy += 6;
+        doc.text(gapHdr, M, fy); fy += 6;
         gaps.slice(0, 6).forEach(function(f) {
           if (fy > H-30) return;
           doc.setFillColor(252,235,235);
@@ -1594,8 +1637,10 @@ function generatePDF() {
 
       // In progress
       if (partials.length > 0 && fy < H-50) {
+        var shownParts = Math.min(partials.length, 4);
+        var partHdr = partials.length > 4 ? 'IN PROGRESS — Started but not complete (showing '+shownParts+' of '+partials.length+')' : 'IN PROGRESS — Started but not complete';
         doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(186,117,23);
-        doc.text('IN PROGRESS — Started but not complete', M, fy); fy += 6;
+        doc.text(partHdr, M, fy); fy += 6;
         partials.slice(0, 4).forEach(function(f) {
           if (fy > H-30) return;
           doc.setFillColor(250,238,220);
@@ -1676,10 +1721,33 @@ function generatePDF() {
           fy += 12;
         });
       }
+      // Already Strong section
+      if (goods.length > 0 && fy < H-40) {
+        fy += 4;
+        var maxGoods = 5;
+        var shownGoods = 0;
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+        doc.text('ALREADY STRONG \u2713 \u2014 '+goods.length+' area'+(goods.length!==1?'s':'')+' working well', M, fy);
+        fy += 6;
+        goods.forEach(function(f) {
+          if (fy > H-25 || shownGoods >= maxGoods) return;
+          doc.setFillColor(225,245,238);
+          doc.setDrawColor(184,224,208); doc.setLineWidth(0.3);
+          doc.roundedRect(M, fy, W-2*M, 14, 2, 2, 'FD');
+          doc.setFillColor(15,110,86); doc.circle(M+5, fy+7, 2, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+          doc.text(safe(f.cat), M+10, fy+6);
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+          doc.text(doc.splitTextToSize(safe(f.q), W-2*M-14)[0], M+10, fy+11);
+          fy += 17; shownGoods++;
+        });
+        if (goods.length > maxGoods) {
+          doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+          doc.text('+ '+(goods.length-maxGoods)+' more strong areas \u2014 see Category Detail (Section 6)', M, fy);
+          fy += 5;
+        }
+      }
       footer(4);
-
-      // ═══════════════════════════════════════════════════
-      // PAGE 4: ACTION PLAN (full detail)
       // ═══════════════════════════════════════════════════
       doc.addPage();
       var y4 = sectionHeader('Prioritised action plan', 4, 'Your top actions ranked by impact and urgency');
