@@ -1815,8 +1815,16 @@ function generatePDF() {
           bg: pri==='High'?[252,235,235]:[250,238,220]
         }, x);
       });
-      // Sort High first
-      gapActions.sort(function(a,b){ return (a.p==='High'?0:1) - (b.p==='High'?0:1); });
+      // Sort: High priority first, then by category score (lowest scoring categories first)
+      var catScoreMap = {};
+      catScoresArr.forEach(function(cs){ catScoreMap[cs.cat.label] = cs.score === null ? 100 : cs.score; });
+      gapActions.sort(function(a,b) {
+        // High before Medium
+        var pDiff = (a.p==='High'?0:1) - (b.p==='High'?0:1);
+        if (pDiff !== 0) return pDiff;
+        // Within same priority: lowest category score first
+        return (catScoreMap[a.cat]||50) - (catScoreMap[b.cat]||50);
+      });
       var actions = gapActions.slice(0,5)
         .concat(partials.slice(0,2).map(function(x){ return Object.assign({p:'Medium', col:[186,117,23], bg:[250,238,220]}, x); }))
         .slice(0,7);
