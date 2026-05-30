@@ -65,8 +65,8 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
 .btn-primary:active{transform:translateY(0)}
 .btn-secondary{display:inline-flex;align-items:center;gap:.5rem;padding:.625rem 1.25rem;border-radius:var(--r-full);border:1.5px solid var(--bdr);background:var(--surf);font-weight:500;font-size:.875rem;cursor:pointer;min-height:40px;white-space:nowrap}
 .btn-secondary:hover{background:var(--off);border-color:var(--p)}
-.btn-stripe{display:inline-flex;align-items:center;gap:.625rem;padding:.875rem 2rem;border-radius:var(--r-full);background:#635bff;color:#fff;font-weight:700;font-size:1rem;border:none;cursor:pointer;min-height:52px;text-decoration:none}
-.btn-stripe:hover{background:#4b44e0;transform:translateY(-1px);box-shadow:var(--sh-md)}
+.btn-stripe{display:inline-flex;align-items:center;gap:.625rem;padding:.875rem 2.25rem;border-radius:var(--r-full);background:#4f46e5;color:#fff;font-weight:700;font-size:1.0625rem;border:none;cursor:pointer;min-height:54px;text-decoration:none;box-shadow:0 4px 20px rgba(79,70,229,.4)}
+.btn-stripe:hover{background:#4338ca;transform:translateY(-2px);box-shadow:0 8px 28px rgba(79,70,229,.5)}
 
 /* ─── WELCOME ─────────────────────────────────────────────── */
 .hero{text-align:center;padding:3.5rem 1rem 3rem}
@@ -139,6 +139,7 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
 .gdpr-row:hover{border-color:#1d9e75}
 .gdpr-row input[type="checkbox"]{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
 .gate-err{color:var(--err);font-size:.8125rem;margin-bottom:.875rem;display:none;padding:.5rem .75rem;background:rgba(163,45,45,.08);border-radius:.5rem}
+.gate-card{background:var(--surf)!important}.gate-field input{background:var(--surf2)!important;color:var(--tx)!important}
 
 /* ─── RESULTS ─────────────────────────────────────────────── */
 .results-hero{text-align:center;padding:2.5rem 1rem 2rem}
@@ -307,9 +308,9 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
         <label for="gate-email">Work email address</label>
         <input id="gate-email" type="email" placeholder="you@yourcompany.com" autocomplete="email">
       </div>
-      <div id="gdpr-row" onclick="toggleGDPR(event)" style="display:flex;flex-direction:row;align-items:flex-start;gap:12px;margin-bottom:20px;padding:14px 16px;border:2px solid #ccc;border-radius:12px;cursor:pointer;background:#f9f9f9;text-align:left;width:100%;box-sizing:border-box">
+      <div id="gdpr-row" onclick="toggleGDPR(event)" style="display:flex;flex-direction:row;align-items:flex-start;gap:12px;margin-bottom:20px;padding:14px 16px;border:2px solid var(--bdr);border-radius:12px;cursor:pointer;background:var(--surf2);text-align:left;width:100%;box-sizing:border-box">
         <input type="checkbox" id="gate-gdpr" style="position:absolute;opacity:0;width:0;height:0">
-        <div id="custom-check-box" style="width:22px;height:22px;min-width:22px;min-height:22px;border:2.5px solid #888;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#ffffff;box-sizing:border-box;margin-top:1px">
+        <div id="custom-check-box" style="width:22px;height:22px;min-width:22px;min-height:22px;border:2.5px solid var(--muted);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--surf);box-sizing:border-box;margin-top:1px">
           <svg id="check-tick" style="display:none;width:13px;height:13px" viewBox="0 0 13 13" fill="none"><polyline points="1.5,6.5 5,10 11.5,2.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
         <span style="font-size:13px;color:#6b6960;line-height:1.55;user-select:none;flex:1">I agree to receive my ESG report and occasional tips on improving sustainability performance. I can unsubscribe at any time. See our <a href="/privacy" target="_blank" onclick="event.stopPropagation()" style="color:#0f6e56;text-decoration:underline">Privacy Policy</a>.</span>
@@ -985,6 +986,12 @@ document.getElementById('co-date').value = new Date().toISOString().split('T')[0
    Designed to produce a genuinely useful 8-page ESG report.
 ──────────────────────────────────────────────────────────── */
 
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
 function generatePDF() {
   if (!_pdfUnlocked) { alert('Please verify your payment first.'); return; }
   var btn = document.getElementById('pdf-btn');
@@ -1302,7 +1309,7 @@ function generatePDF() {
       // Column headers
       // Action plan: 3-column layout, no timeline overlap
       // Col widths: Priority=26, Area=42, Action=W-2*M-26-42-8=approx 96mm
-      var aColP=M, aColA=M+28, aColQ=M+72, aColQW=W-M-aColQ+M-2;
+      var aColP=M, aColA=M+28, aColQ=M+75, aColQW=W-2*M-75+M-2;
 
       doc.setFillColor(245,244,240);
       doc.rect(M, y4, W-2*M, 7, 'F');
@@ -1315,17 +1322,39 @@ function generatePDF() {
       // Convert questions to action statements
       function questionToAction(q) {
         var s = safe(q);
-        // Remove question markers and rephrase as action
-        s = s.replace(/^Do you /i,'Establish: ');
-        s = s.replace(/^Have you /i,'Implement: ');
-        s = s.replace(/^Is there /i,'Create: ');
-        s = s.replace(/^Are your /i,'Ensure: ');
-        s = s.replace(/^Does your business /i,'Implement: ');
-        s = s.replace(/^Has your business /i,'Address: ');
-        s = s.replace(/^When choosing /i,'Assess: ');
-        s = s.replace(/^Before /i,'Introduce: ');
-        // Trim to ~90 chars max
-        if (s.length > 92) s = s.substring(0,89)+'...';
+        // Rephrase question into imperative action statement
+        s = s.replace(/^Do you know /i,'Measure and document ');
+        s = s.replace(/^Do you check /i,'Check and record ');
+        s = s.replace(/^Do you have /i,'Implement ');
+        s = s.replace(/^Do you offer /i,'Introduce ');
+        s = s.replace(/^Do you track /i,'Start tracking ');
+        s = s.replace(/^Do you monitor /i,'Monitor and record ');
+        s = s.replace(/^Do you pay /i,'Review pay and ensure ');
+        s = s.replace(/^Do you actively /i,'Actively ');
+        s = s.replace(/^Do you try /i,'Develop a plan to ');
+        s = s.replace(/^Do you keep /i,'Track and record ');
+        s = s.replace(/^Do you make /i,'Establish a policy to ');
+        s = s.replace(/^Do you give /i,'Give ');
+        s = s.replace(/^Do you /i,'Establish ');
+        s = s.replace(/^Have you looked /i,'Map your ');
+        s = s.replace(/^Have you thought about /i,'Assess ');
+        s = s.replace(/^Have you actually /i,'Take action: ');
+        s = s.replace(/^Have you ever /i,'Conduct a ');
+        s = s.replace(/^Have you had /i,'Document and address ');
+        s = s.replace(/^Have you /i,'Implement ');
+        s = s.replace(/^Is there a /i,'Create a ');
+        s = s.replace(/^Is there /i,'Establish ');
+        s = s.replace(/^Are your /i,'Ensure ');
+        s = s.replace(/^Does your business have /i,'Implement ');
+        s = s.replace(/^Does your business /i,'Ensure your business ');
+        s = s.replace(/^Has your business had /i,'Review and address any ');
+        s = s.replace(/^Has your business /i,'Ensure ');
+        s = s.replace(/^When choosing /i,'Evaluate ');
+        s = s.replace(/^Before /i,'Before launching, assess ');
+        // Clean up double spaces
+        s = s.replace(/  +/g, ' ').trim();
+        // Capitalise first letter
+        s = s.charAt(0).toUpperCase() + s.slice(1);
         return s;
       }
 
@@ -1545,25 +1574,28 @@ function generatePDF() {
       doc.rect(M, y8, W-2*M, 8, 'F');
       doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
       doc.text('RESOURCE', M+3, y8+5.5);
-      doc.text('WHERE TO FIND IT', M+58, y8+5.5);
-      doc.text('WHAT IT HELPS WITH', M+112, y8+5.5);
+      doc.text('URL', M+56, y8+5.5);
+      doc.text('WHAT IT HELPS WITH', M+100, y8+5.5);
       y8 += 10;
 
       resources.forEach(function(res, i) {
         if (y8 > H-20) return;
         if (i%2===0) { doc.setFillColor(250,250,249); doc.rect(M, y8-2, W-2*M, 10, 'F'); }
         doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
-        // Name: max 52mm
-        doc.text(doc.splitTextToSize(safe(res.name),52)[0], M+3, y8+4);
-        // URL: max 52mm, start at M+56
+        // Name col: 50mm
+        doc.text(doc.splitTextToSize(safe(res.name),50)[0], M+3, y8+4);
+        // URL col: 40mm — truncate long URLs cleanly
         doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
-        doc.text(doc.splitTextToSize(safe(res.url),52)[0], M+58, y8+4);
-        // Use: remaining space from M+112
+        var urlShort = safe(res.url).length > 30 ? safe(res.url).substring(0,28)+'...' : safe(res.url);
+        doc.text(urlShort, M+56, y8+4);
+        // Description col: rest of width
         doc.setTextColor(60,58,52);
-        doc.text(doc.splitTextToSize(safe(res.use), W-M-114)[0], M+112, y8+4);
+        var descLines = doc.splitTextToSize(safe(res.use), W-2*M-86);
+        doc.text(descLines[0], M+100, y8+4);
+        if (descLines[1]) doc.text(descLines[1], M+100, y8+8);
         doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
-        doc.line(M, y8+6, W-M, y8+6);
-        y8 += 9;
+        doc.line(M, y8+11, W-M, y8+11);
+        y8 += 13;
       });
 
       // Back cover strip
@@ -1590,6 +1622,7 @@ function generatePDF() {
     }
   }, 150);
 }
+
 
 
 </script>
