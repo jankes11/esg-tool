@@ -1614,6 +1614,22 @@ function generatePDF() {
         ' Your biggest improvement opportunity is '+safe(lowestCat.cat.label)+' ('+lowestCat.score+'%) — focus here first.' : '';
       wrapText(scoreDesc+lowestSentence, M+6, sb_y+15, W-2*M-12, 5.5, 4);
 
+      // "X points away from next band" motivational line
+      var bandThresholds = [
+        {min:20, label:'Starting out'}, {min:40, label:'Developing'},
+        {min:60, label:'Progressing'}, {min:80, label:'Leading'}
+      ];
+      var nextBand = null;
+      for (var bi=0; bi<bandThresholds.length; bi++) {
+        if (overall < bandThresholds[bi].min) { nextBand = bandThresholds[bi]; break; }
+      }
+      if (nextBand) {
+        var ptsAway = nextBand.min - overall;
+        var nextMsg = 'You are '+ptsAway+' point'+(ptsAway!==1?'s':'')+' away from "'+nextBand.label+'" ('+nextBand.min+'%). Closing your top gaps could get you there.';
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.text(safe(nextMsg), M+6, sb_y+28);
+      }
+
       // Industry benchmark comparison bars
       var benchmarks = {
         'construction':[46,68,32,'Construction'], 'build':[46,68,32,'Construction'],
@@ -1653,7 +1669,7 @@ function generatePDF() {
           bBarY += 8;
         });
         doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-        doc.text('Based on EFRAG/BSI sector ESG assessment data 2024-25. Indicative only; individual results vary.', M+5, bmy+32);
+        doc.text('Illustrative benchmark based on aggregated SME ESG assessment results. Indicative only; individual results vary.', M+5, bmy+32);
         bmy += 38;
       }
 
@@ -1702,7 +1718,16 @@ function generatePDF() {
         doc.text(sb.label, sx+8, y3+19);
       });
 
-      var fy = y3 + 30;
+      // Gap categories sentence
+      var gapsByCat2 = {};
+      gaps.forEach(function(g){ gapsByCat2[g.cat] = (gapsByCat2[g.cat]||0)+1; });
+      var sortedGC = Object.keys(gapsByCat2).sort(function(a,b){ return gapsByCat2[b]-gapsByCat2[a]; });
+      if (sortedGC.length >= 1) {
+        var gcSentence = 'Most gaps are in '+safe(sortedGC[0])+(sortedGC[1]?' and '+safe(sortedGC[1]):'')+'  —  these are your highest priority areas.';
+        doc.setFontSize(8.5); doc.setFont(undefined,'italic'); doc.setTextColor(92,90,85);
+        doc.text(safe(gcSentence), M, y3+26);
+      }
+      var fy = y3 + 34;
 
       // Gaps
       if (gaps.length > 0) {
