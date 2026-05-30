@@ -1467,8 +1467,7 @@ function generatePDF() {
           if (fy > H-30) return;
           doc.setFillColor(252,235,235);
           doc.setDrawColor(240,192,192); doc.setLineWidth(0.3);
-          var fqCheck2 = doc.splitTextToSize(safe(f.q), W-2*M-14);
-          var fCardH2 = fqCheck2.length > 1 ? 22 : 17;
+          var fCardH2 = doc.splitTextToSize(safe(f.q), W-2*M-14).length > 1 ? 22 : 17;
           doc.roundedRect(M, fy, W-2*M, fCardH2, 2, 2, 'FD');
           doc.setFillColor(163,45,45); doc.circle(M+5, fy+8, 2, 'F');
           doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85);
@@ -1476,7 +1475,7 @@ function generatePDF() {
           doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(7.5);
           var fqLines = doc.splitTextToSize(safe(f.q), W-2*M-14);
           fqLines.slice(0,2).forEach(function(fl,fli){ doc.text(fl, M+10, fy+11+(fli*4.5)); });
-          var fRowH = fqCheck2 && fqCheck2.length > 1 ? 25 : 20;
+          var fRowH = fqLines.length > 1 ? 25 : 20;
           fy += fRowH;
         });
         fy += 4;
@@ -1497,11 +1496,11 @@ function generatePDF() {
           doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(7.5);
           var fqLines = doc.splitTextToSize(safe(f.q), W-2*M-14);
           fqLines.slice(0,2).forEach(function(fl,fli){ doc.text(fl, M+10, fy+11+(fli*4.5)); });
-          var fRowH = fqCheck2 && fqCheck2.length > 1 ? 25 : 20;
+          var fRowH = fqLines.length > 1 ? 25 : 20;
           fy += fRowH;
         });
       }
-      footer(4);;
+      footer(4);
 
       // ═══════════════════════════════════════════════════
       // PAGE 4: ACTION PLAN (full detail)
