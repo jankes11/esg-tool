@@ -585,7 +585,7 @@ function scoreColor(s) {
 function buildResults(visitorName, visitorEmail) {
   const co = document.getElementById('co-name').value || 'Your Company';
   const industry = document.getElementById('co-industry').value || '';
-  const size = document.getElementById('co-size').value || '';
+  const size = document.getElementById('co-size').value || 'Not disclosed';
   const coDate = document.getElementById('co-date').value || new Date().toISOString().split('T')[0];
 
   const catScores = CATEGORIES.map(c => ({ cat: c, score: catScore(c) }));
@@ -1106,6 +1106,12 @@ document.addEventListener('keydown', function(e) {
    Designed to produce a genuinely useful 8-page ESG report.
 ──────────────────────────────────────────────────────────── */
 
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
 function generatePDF() {
   if (!_pdfUnlocked) { alert('Please verify your payment first.'); return; }
   var btn = document.getElementById('pdf-btn');
@@ -1321,8 +1327,7 @@ function generatePDF() {
         if (ri%2===0) { doc.setFillColor(250,250,249); } else { doc.setFillColor(255,255,255); }
         doc.rect(M, ym-2, W-2*M, 11, 'F');
         doc.setFontSize(8); doc.setFont(undefined, ri===0||ri===1?'bold':'normal');
-        var tRowColor = ri===2?[163,45,45]:ri===1?[186,117,23]:ri===0?[15,110,86]:[130,128,122];
-        doc.setTextColor(tRowColor[0],tRowColor[1],tRowColor[2]);
+        doc.setTextColor(ri===2?[163,45,45]:ri===1?[186,117,23]:ri===0?[15,110,86]:[130,128,122]);
         doc.text(safe(row[0]), tX[0]+3, ym+5);
         doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
         doc.text(safe(row[1]), tX[1]+3, ym+5);
@@ -1351,7 +1356,7 @@ function generatePDF() {
       ym += 8;
 
       var bands = [
-        [80,100,'Leading','Top 20% of SMEs. You can confidently respond to customer ESG requests and most audits.',[15,110,86],[225,245,238]],
+        [80,100,'Leading','Strong performance. You can confidently respond to customer ESG requests and most supplier audits.',[15,110,86],[225,245,238]],
         [60,79,'Progressing','Above average. You will pass most basic ESG checks. Some gaps remain for larger customers.',[29,158,117],[220,240,232]],
         [40,59,'Developing','Typical for SMEs starting their ESG journey. Key gaps may affect procurement eligibility.',[186,117,23],[250,238,220]],
         [20,39,'Starting out','Significant gaps. Likely to struggle with ESG questions from banks, investors, or Tier 1 customers.',[153,60,29],[248,232,220]],
@@ -1429,9 +1434,9 @@ function generatePDF() {
       doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
       var scoreDesc = 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" category for this self-assessment. ';
       if (overall < 40) scoreDesc += 'At this score, most businesses struggle to pass ESG questionnaires from Tier 1 contractors, banks, or large customers. The gap is closable — most of the quick wins cost nothing but time.';
-      else if (overall < 60) scoreDesc += 'At this score, you will pass basic ESG checks from customers and banks, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now puts you ahead of most SME competitors.';
-      else if (overall < 80) scoreDesc += 'You are ahead of most SMEs in your sector. At this score, you can confidently respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
-      else scoreDesc += 'You are performing at a leading level — top 20% of SMEs. Your ESG performance is a genuine competitive advantage for winning contracts and attracting investment.';
+      else if (overall < 60) scoreDesc += 'At this score, you will pass basic ESG checks from customers and banks, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
+      else if (overall < 80) scoreDesc += 'You are performing well. At this score, you can confidently respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
+      else scoreDesc += 'You are performing at a leading level. Your ESG performance is a genuine competitive advantage for winning contracts and demonstrating responsibility to customers and investors.';
       wrapText(scoreDesc, M+6, sb_y+15, W-2*M-12, 5.5, 3);
       footer(3);;
 
@@ -1467,7 +1472,8 @@ function generatePDF() {
           if (fy > H-30) return;
           doc.setFillColor(252,235,235);
           doc.setDrawColor(240,192,192); doc.setLineWidth(0.3);
-          var fCardH2 = doc.splitTextToSize(safe(f.q), W-2*M-14).length > 1 ? 22 : 17;
+          var fqCheck2 = doc.splitTextToSize(safe(f.q), W-2*M-14);
+          var fCardH2 = fqCheck2.length > 1 ? 22 : 17;
           doc.roundedRect(M, fy, W-2*M, fCardH2, 2, 2, 'FD');
           doc.setFillColor(163,45,45); doc.circle(M+5, fy+8, 2, 'F');
           doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85);
@@ -1475,7 +1481,7 @@ function generatePDF() {
           doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(7.5);
           var fqLines = doc.splitTextToSize(safe(f.q), W-2*M-14);
           fqLines.slice(0,2).forEach(function(fl,fli){ doc.text(fl, M+10, fy+11+(fli*4.5)); });
-          var fRowH = fqLines.length > 1 ? 25 : 20;
+          var fRowH = fqCheck2 && fqCheck2.length > 1 ? 25 : 20;
           fy += fRowH;
         });
         fy += 4;
@@ -1496,11 +1502,11 @@ function generatePDF() {
           doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(7.5);
           var fqLines = doc.splitTextToSize(safe(f.q), W-2*M-14);
           fqLines.slice(0,2).forEach(function(fl,fli){ doc.text(fl, M+10, fy+11+(fli*4.5)); });
-          var fRowH = fqLines.length > 1 ? 25 : 20;
+          var fRowH = fqCheck2 && fqCheck2.length > 1 ? 25 : 20;
           fy += fRowH;
         });
       }
-      footer(4);
+      footer(4);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 4: ACTION PLAN (full detail)
@@ -1641,9 +1647,8 @@ function generatePDF() {
         var aTextLines = doc.splitTextToSize(actionText, aColQW);
         var nLines = Math.min(aTextLines.length, 2);
         var riskText = getBusinessRisk(a.q);
-        var riskLinesArr = riskText ? doc.splitTextToSize('Risk: '+safe(riskText), aColQW) : [];
-        var riskLinesCount = Math.min(riskLinesArr.length, 2);
-        var rowH = Math.max(18, 5 + nLines * 5 + riskLinesCount * 4.5);
+        var riskLines = riskText ? doc.splitTextToSize('Risk: '+safe(riskText), aColQW).length : 0;
+        var rowH = Math.max(18, 5 + nLines * 5 + Math.min(riskLines,2) * 4.5);
 
         if (i%2===0) { doc.setFillColor(250,250,249); doc.rect(M, y4-2, W-2*M, rowH, 'F'); }
         // Priority badge
@@ -1660,9 +1665,11 @@ function generatePDF() {
           doc.text(line, aColQ, y4+4+(li*5));
         });
         // Business risk
-        if (riskText) {
+        var bRisk = getBusinessRisk(a.q);
+        if (bRisk) {
+          var riskLines = doc.splitTextToSize('Risk: '+safe(bRisk), aColQW);
           doc.setFontSize(7); doc.setFont(undefined,'italic'); doc.setTextColor(163,45,45);
-          riskLinesArr.slice(0,2).forEach(function(rl,rli){
+          riskLines.slice(0,2).forEach(function(rl,rli){
             doc.text(rl, aColQ, y4+4+(Math.min(aTextLines.length,2)*5)+(rli*4.5));
           });
         }
@@ -1710,8 +1717,47 @@ function generatePDF() {
       doc.text('Personalised for '+safe(co)+' ('+safe(industry)+')', M+27, y5+6.5);
       y5 += 14;
 
-      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-      y5 = wrapText(aiText, M+3, y5, W-2*M-6, 5.5);
+      // Render AI text with basic markdown formatting
+      var aiLines = aiText.split('\n');
+      doc.setFontSize(8.5); doc.setTextColor(26,25,22);
+      aiLines.forEach(function(line) {
+        if (y5 > H-20) return;
+        var trimmed = line.trim();
+        if (!trimmed) { y5 += 3; return; }
+        // Section headers (## or bold standalone lines)
+        if (/^##\s/.test(trimmed) || /^\*\*[^*]+\*\*$/.test(trimmed)) {
+          var hText = trimmed.replace(/^##\s+/,'').replace(/\*\*/g,'');
+          doc.setFont(undefined,'bold'); doc.setFontSize(9); doc.setTextColor(8,80,65);
+          doc.text(safe(hText), M+3, y5);
+          y5 += 6.5;
+          doc.setFont(undefined,'normal'); doc.setFontSize(8.5); doc.setTextColor(26,25,22);
+        }
+        // Numbered items with bold lead word
+        else if (/^\d+\.\s/.test(trimmed)) {
+          var numMatch = trimmed.match(/^(\d+\.\s+)(\*\*([^*]+)\*\*\.?\s*)?(.*)/);
+          if (numMatch) {
+            doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+            var numPart = safe(numMatch[1] + (numMatch[3]||''));
+            doc.text(numPart, M+3, y5);
+            var xOff = M+3+doc.getTextWidth(numPart)+1;
+            doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+            var restText = safe(numMatch[4]||'');
+            if (restText) {
+              var restLines = doc.splitTextToSize(restText, W-2*M-6-(xOff-M-3));
+              doc.text(restLines[0]||'', xOff, y5);
+              y5 += 5.5;
+              restLines.slice(1).forEach(function(rl){ doc.text(rl, M+6, y5); y5+=5.5; });
+            } else { y5 += 5.5; }
+          }
+        }
+        // Regular line - strip remaining ** markers
+        else {
+          var plainText = trimmed.replace(/\*\*([^*]+)\*\*/g,'$1');
+          var wrappedLines = doc.splitTextToSize(safe(plainText), W-2*M-6);
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+          wrappedLines.forEach(function(wl){ doc.text(wl, M+3, y5); y5+=5.5; });
+        }
+      });
       footer(6);;
 
       // ═══════════════════════════════════════════════════
@@ -1834,8 +1880,8 @@ function generatePDF() {
       doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
       var nextSteps = [
         '1. Share this report with your leadership team. Assign a named owner and target date for each High priority action.',
-        '2. Start with your highest-risk gap. Use the action and resource links in this report to implement one improvement this month. Progress beats perfection.',
-        '3. Retake this assessment in 6-12 months. Your score will improve as you close gaps, and you will have documented evidence of progress to share with customers and banks.',
+        '2. Book a free 30-minute ESG consultation at myesgcheck.com — we can help you prioritise and implement your action plan.',
+        '3. Retake this assessment in 6-12 months. Your score will improve as you close gaps, and you will have documented evidence of progress to show customers and banks.',
       ];
       var nsy = y8+14;
       nextSteps.forEach(function(step) {
@@ -1856,14 +1902,15 @@ function generatePDF() {
         { name:'ICO GDPR SME guide',          url:'ico.org.uk',                use:'UK data protection authority guidance for small businesses' },
       ];
 
-      // Retake CTA box
+      // Consulting upsell box
       doc.setFillColor(4,52,44);
       doc.roundedRect(M, y8, W-2*M, 22, 3, 3, 'F');
       doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-      doc.text('Retake this assessment annually', M+6, y8+8);
+      doc.text('Need help implementing this plan?', M+6, y8+8);
       doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(120,200,175);
-      doc.text('Your score improves as you close gaps. Annual reassessment gives you documented evidence of progress', M+6, y8+14);
-      doc.text('to share with customers, banks, and investors. Free at myesgcheck.com.', M+6, y8+20);
+      doc.text('Book a free 30-minute ESG Action Call at myesgcheck.com — no obligation, no jargon.', M+6, y8+14);
+      doc.setTextColor(79,214,168); doc.setFont(undefined,'bold');
+      doc.text('myesgcheck.com/consultation', M+6, y8+20);
       try { doc.link(M+6, y8+15, 80, 6, { url: 'https://myesgcheck.com' }); } catch(e) {}
       y8 += 28;
       // Resources table
@@ -1922,6 +1969,7 @@ function generatePDF() {
     }
   }, 150);
 }
+
 
 
 
