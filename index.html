@@ -1533,8 +1533,14 @@ function generatePDF() {
       else if (overall < 60) scoreDesc += 'At this score, you are likely to satisfy many basic customer ESG questionnaires, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
       else if (overall < 80) scoreDesc += 'You are performing well. At this score, you are well-placed to respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
       else scoreDesc += 'You are performing at a leading level. Your ESG performance is a genuine competitive advantage for winning contracts and demonstrating responsibility to customers and investors.';
-      wrapText(scoreDesc, M+6, sb_y+15, W-2*M-12, 5.5, 3);
-      footer(3);;
+      var lowestCat = catScoresArr.reduce(function(a,b){
+        if (a.score===null) return b; if (b.score===null) return a;
+        return a.score < b.score ? a : b;
+      });
+      var lowestSentence = (lowestCat && lowestCat.score !== null) ?
+        ' Your biggest improvement opportunity is '+safe(lowestCat.cat.label)+' ('+lowestCat.score+'%) — focus here first.' : '';
+      wrapText(scoreDesc+lowestSentence, M+6, sb_y+15, W-2*M-12, 5.5, 4);
+      footer(3);
 
       // ═══════════════════════════════════════════════════
       // PAGE 3: KEY FINDINGS — Gaps & Strengths
@@ -1773,7 +1779,7 @@ function generatePDF() {
           [/^Do your contracts or buying terms with suppliers/i, 'Add ethical conduct, labour standards, and environmental requirements to all supplier contracts.'],
           [/^Do you make any effort to buy from local/i, 'Establish an inclusive procurement policy that actively considers local and minority-owned suppliers.'],
           [/^When choosing new suppliers/i, 'Incorporate ESG criteria into your supplier selection process alongside price and quality.'],
-          [/^Do you have a Modern Slavery statement/i, 'Produce a Modern Slavery statement and implement a policy covering forced labour and trafficking risks.'],
+          [/^Do you have a Modern Slavery statement/i, 'Adopt a supplier due diligence process covering modern slavery and forced labour risks. If your annual turnover exceeds £36 million, assess whether a formal Modern Slavery Statement is legally required.'],
           [/^Do you give smaller or local suppliers/i, 'Implement fair procurement practices: open tendering, 30-day payment terms, reasonable contracts.'],
           [/^Does your business have written guidelines/i, 'Implement a written code of conduct covering ethics, gifts, conflicts of interest, and decision-making.'],
           [/^Does your business have a clear rule.*bribery/i, 'Adopt a formal anti-bribery policy and communicate it to all staff.'],
