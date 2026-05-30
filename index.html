@@ -1137,7 +1137,7 @@ function generatePDF() {
 
       // ── Collect data ─────────────────────────────────────
       var co      = (document.getElementById('co-name')     && document.getElementById('co-name').value)     || 'Your Company';
-      var industry= (document.getElementById('co-industry') && document.getElementById('co-industry').value) || 'Not specified';
+      var industry= (document.getElementById('co-industry') && document.getElementById('co-industry').value) || 'Not disclosed';
       var size    = (document.getElementById('co-size')     && document.getElementById('co-size').value)     || 'Not specified';
       var coDate  = (document.getElementById('co-date')     && document.getElementById('co-date').value)     || new Date().toISOString().split('T')[0];
 
@@ -1293,8 +1293,11 @@ function generatePDF() {
       doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
       doc.text(safe(co), M, 198);
       doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      var sizeLabel = safe(size) && safe(size) !== 'Not disclosed' ? '   |   Employees: '+safe(size) : '';
-      doc.text('Industry: '+safe(industry)+sizeLabel, M, 205);
+      var parts = [];
+      if (safe(industry) && safe(industry) !== 'Not disclosed') parts.push('Industry: '+safe(industry));
+      if (safe(size) && safe(size) !== 'Not disclosed') parts.push('Employees: '+safe(size));
+      if (parts.length === 0) parts.push('Industry: Not disclosed');
+      doc.text(parts.join('   |   '), M, 205);
       doc.text('Assessment date: '+safe(coDate)+'   |   Valid for: 12 months', M, 211);
       doc.setFontSize(8); doc.setTextColor(160,158,150);
       doc.text('Prepared by myESGcheck.com  |  Self-assessment tool aligned with ESRS Set 1 and EFRAG VSME 2024', M, 218);
@@ -1635,7 +1638,7 @@ function generatePDF() {
       // Business risk lookup — why each gap matters commercially
       var businessRisks = [
         [/^Do you know roughly how much energy/i, 'Without baseline data, you cannot set targets, report to customers, or access green finance.'],
-        [/^Have you looked beyond your own premises/i, 'Scope 3 emissions are increasingly required in customer supplier questionnaires and CSRD reporting chains.'],
+        [/^Have you looked beyond your own premises/i, 'Scope 3 emissions are increasingly requested by larger customers and supply chain partners.'],
         [/^Have you thought about how things like extreme weather/i, 'Unassessed climate risks can affect insurance, lending terms, and business continuity planning.'],
         [/^Do you have any goals or a rough plan to reduce/i, 'Without a documented target, you cannot demonstrate progress to customers, banks, or investors.'],
         [/^Have you actually changed anything/i, 'Without evidence of action, ESG claims lack credibility with customers and auditors.'],
@@ -1739,8 +1742,30 @@ function generatePDF() {
         return s;
       }
 
-      var actions = gaps.slice(0,5).map(function(x){ return Object.assign({p:'High', col:[163,45,45], bg:[252,235,235]}, x); })
-        .concat(partials.slice(0,3).map(function(x){ return Object.assign({p:'Medium', col:[186,117,23], bg:[250,238,220]}, x); }))
+      // Priority override: some gaps are genuinely lower priority for most SMEs
+      var lowerPriorityPatterns = [
+        /net-zero/i, /communicate your environmental goals/i,
+        /give back to the local community/i, /local businesses, small suppliers/i,
+        /design or source products and packaging/i
+      ];
+      function getPriority(q) {
+        for (var p=0; p<lowerPriorityPatterns.length; p++) {
+          if (lowerPriorityPatterns[p].test(safe(q))) return 'Medium';
+        }
+        return 'High';
+      }
+      var gapActions = gaps.map(function(x){
+        var pri = getPriority(x.q);
+        return Object.assign({
+          p: pri,
+          col: pri==='High'?[163,45,45]:[186,117,23],
+          bg: pri==='High'?[252,235,235]:[250,238,220]
+        }, x);
+      });
+      // Sort High first
+      gapActions.sort(function(a,b){ return (a.p==='High'?0:1) - (b.p==='High'?0:1); });
+      var actions = gapActions.slice(0,5)
+        .concat(partials.slice(0,2).map(function(x){ return Object.assign({p:'Medium', col:[186,117,23], bg:[250,238,220]}, x); }))
         .slice(0,7);
 
       actions.forEach(function(a, i) {
