@@ -22,6 +22,49 @@ function checkRateLimit(ip) {
   return true;
 }
 
+// Industry-specific guidance context for the prompt
+function getIndustryContext(industry) {
+  const ind = (industry || '').toLowerCase();
+  if (ind.includes('construct') || ind.includes('build') || ind.includes('civil')) {
+    return `Industry-specific context for Construction:
+- Key carbon sources: diesel plant/machinery, concrete, steel, aggregates, timber, transport
+- Relevant frameworks: PAS 2080 (carbon in buildings), BREEAM, Considerate Constructors Scheme
+- Supply chain priorities: Environmental Product Declarations (EPDs) for materials, sustainably sourced timber (FSC/PEFC), Modern Slavery in subcontractor chains
+- Site-level actions: skip hire waste tracking, fuel consumption logs, dust and noise records
+- Customer/tender requirements: ISO 14001, SSIP (H&S), PQQ/SQ ESG sections, net-zero supply chain clauses`;
+  }
+  if (ind.includes('retail') || ind.includes('food') || ind.includes('hospitality')) {
+    return `Industry-specific context for Retail/Food/Hospitality:
+- Key carbon sources: refrigeration, packaging, food waste, logistics, store energy
+- Relevant frameworks: Wrap (food waste), Courtauld Commitment, Sedex (supply chain)
+- Supply chain priorities: food provenance, packaging recyclability, supplier labour standards
+- Customer requirements: B Corp alignment, plastic reduction commitments, Fair Trade`;
+  }
+  if (ind.includes('manufactur') || ind.includes('engineering')) {
+    return `Industry-specific context for Manufacturing/Engineering:
+- Key carbon sources: process energy, raw materials, logistics, product end-of-life
+- Relevant frameworks: ISO 14001, ISO 50001 (energy), GHG Protocol product standard
+- Supply chain priorities: conflict minerals, EPDs, supplier carbon data
+- Customer requirements: REACH compliance, RoHS, supply chain due diligence`;
+  }
+  if (ind.includes('tech') || ind.includes('software') || ind.includes('digital') || ind.includes('it')) {
+    return `Industry-specific context for Technology/Software:
+- Key carbon sources: data centres, cloud computing, business travel, employee commuting
+- Relevant frameworks: GHG Protocol, Science Based Targets (SBTi)
+- Supply chain priorities: hardware supply chains, conflict minerals in devices
+- Customer requirements: ISO 27001 (data), supplier ESG questionnaires in enterprise sales`;
+  }
+  if (ind.includes('transport') || ind.includes('logistics') || ind.includes('fleet')) {
+    return `Industry-specific context for Transport/Logistics:
+- Key carbon sources: fleet fuel (Scope 1), contracted haulage (Scope 3)
+- Relevant frameworks: GLEC Framework, Clean Vehicle Directive
+- Supply chain priorities: subcontractor emissions, EV transition planning
+- Customer requirements: fleet carbon reporting, route optimisation evidence`;
+  }
+  // Default generic context
+  return `Focus recommendations on the specific gaps identified. Use plain English and name real free tools where helpful (e.g. GHG Protocol, ICO GDPR guide, gov.uk guidance).`;
+}
+
 export default async function handler(req) {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -53,6 +96,7 @@ export default async function handler(req) {
   }
 
   const { co, industry, size, overall, catSummary, gapList, partialList } = body;
+  const industryContext = getIndustryContext(industry);
 
   const prompt = `You are a plain-speaking ESG consultant helping a small or medium business improve its sustainability.
 
@@ -68,20 +112,25 @@ ${gapList || 'None identified'}
 In progress (answered Partial):
 ${partialList || 'None identified'}
 
-Write a short, practical improvement plan using plain English — no jargon. Three sections:
+${industryContext}
 
-1. Quick wins (next 1–3 months)
-2–3 specific, concrete actions that target their actual gaps. Name real tools or frameworks if helpful (e.g. GHG Protocol, ISO 14001). Do NOT suggest specific percentage targets or year-based deadlines.
+Write a short, practical improvement plan. Three sections:
 
-2. Bigger priorities (next 6–12 months)
-2–3 medium-term actions. Keep them realistic for a ${size || 'small'} business in ${industry || 'their sector'}.
+## Quick wins (next 1–3 months)
+2–3 specific, concrete actions targeting their actual gaps. Use industry-specific tools, frameworks or terminology where relevant. Do NOT suggest vague actions — be specific to their industry and gaps.
 
-3. What stronger performers typically do
-1–2 sentences describing the practices that organisations with stronger ESG performance typically have in place — without inventing benchmark scores, sector averages, or year targets.
+## Bigger priorities (next 6–12 months)
+2–3 medium-term actions realistic for a ${size || 'small'} business in ${industry || 'their sector'}.
 
-IMPORTANT: Do not invent benchmark numbers, sector averages, percentage comparisons, or year-based targets (e.g. "2035", "2040", "60-70%", "top quartile"). Stick to observable practices.
+## What mature ESG programmes typically include
+1–2 sentences describing practices commonly seen in organisations with well-developed ESG programmes in this sector — framed as observable practices, not invented statistics.
 
-Keep the whole response under 220 words. Be direct and encouraging — not preachy.`;
+RULES:
+- Do not invent benchmark scores, sector averages, or percentage comparisons
+- Do not suggest specific year targets (e.g. "net zero by 2040") — suggest "set a measurable target" instead
+- Do not use phrases like "top performers", "industry leaders", "sector average"
+- Be specific to the industry — generic advice is less useful than sector-specific guidance
+- Keep under 230 words. Be direct, practical, encouraging.`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -93,7 +142,7 @@ Keep the whole response under 220 words. Be direct and encouraging — not preac
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
+        max_tokens: 650,
         messages: [{ role: 'user', content: prompt }]
       })
     });
