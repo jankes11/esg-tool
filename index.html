@@ -838,11 +838,21 @@ document.addEventListener('keydown', function(e) {
         answers[cat.id+'_'+qi] = v;
       });
     });
-    // Unlock PDF
+    // Unlock PDF + show results
     _pdfUnlocked = true;
-    // Show results directly
     buildResults('Dev', 'dev@test.com');
-    console.log('DEV MODE: paywall bypassed, results shown');
+    // After buildResults renders, swap paywall for download button
+    setTimeout(function() {
+      var upgradeBox = document.getElementById('upgrade-box');
+      if (upgradeBox) {
+        upgradeBox.style.display = 'none';
+      }
+      var pdfBtn = document.getElementById('pdf-btn');
+      if (pdfBtn) {
+        pdfBtn.style.display = 'inline-flex';
+      }
+      console.log('DEV MODE: paywall hidden, PDF button shown');
+    }, 50);
   }
 });
 
@@ -1029,11 +1039,21 @@ document.addEventListener('keydown', function(e) {
         answers[cat.id+'_'+qi] = v;
       });
     });
-    // Unlock PDF
+    // Unlock PDF + show results
     _pdfUnlocked = true;
-    // Show results directly
     buildResults('Dev', 'dev@test.com');
-    console.log('DEV MODE: paywall bypassed, results shown');
+    // After buildResults renders, swap paywall for download button
+    setTimeout(function() {
+      var upgradeBox = document.getElementById('upgrade-box');
+      if (upgradeBox) {
+        upgradeBox.style.display = 'none';
+      }
+      var pdfBtn = document.getElementById('pdf-btn');
+      if (pdfBtn) {
+        pdfBtn.style.display = 'inline-flex';
+      }
+      console.log('DEV MODE: paywall hidden, PDF button shown');
+    }, 50);
   }
 });
 
