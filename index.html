@@ -1642,8 +1642,9 @@ function generatePDF() {
         var aTextLines = doc.splitTextToSize(actionText, aColQW);
         var nLines = Math.min(aTextLines.length, 2);
         var riskText = getBusinessRisk(a.q);
-        var riskLines = riskText ? doc.splitTextToSize('Risk: '+safe(riskText), aColQW).length : 0;
-        var rowH = Math.max(18, 5 + nLines * 5 + Math.min(riskLines,2) * 4.5);
+        var riskLinesArr = riskText ? doc.splitTextToSize('Risk: '+safe(riskText), aColQW) : [];
+        var riskLinesCount = Math.min(riskLinesArr.length, 2);
+        var rowH = Math.max(18, 5 + nLines * 5 + riskLinesCount * 4.5);
 
         if (i%2===0) { doc.setFillColor(250,250,249); doc.rect(M, y4-2, W-2*M, rowH, 'F'); }
         // Priority badge
@@ -1660,11 +1661,9 @@ function generatePDF() {
           doc.text(line, aColQ, y4+4+(li*5));
         });
         // Business risk
-        var bRisk = getBusinessRisk(a.q);
-        if (bRisk) {
-          var riskLines = doc.splitTextToSize('Risk: '+safe(bRisk), aColQW);
+        if (riskText) {
           doc.setFontSize(7); doc.setFont(undefined,'italic'); doc.setTextColor(163,45,45);
-          riskLines.slice(0,2).forEach(function(rl,rli){
+          riskLinesArr.slice(0,2).forEach(function(rl,rli){
             doc.text(rl, aColQ, y4+4+(Math.min(aTextLines.length,2)*5)+(rli*4.5));
           });
         }
