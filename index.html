@@ -1632,13 +1632,13 @@ function generatePDF() {
 
       // Industry benchmark comparison bars
       var benchmarks = {
-        'construction':[46,68,32,'Construction'], 'build':[46,68,32,'Construction'],
-        'civil':[46,68,32,'Construction'], 'manufactur':[49,71,35,'Manufacturing'],
+        'construction':[46,68,32,'Construct.'], 'build':[46,68,32,'Construct.'],
+        'civil':[46,68,32,'Construct.'], 'manufactur':[49,71,35,'Manufactur.'],
         'retail':[44,65,30,'Retail'], 'food':[44,65,30,'Retail/Food'],
-        'professional':[52,74,38,'Professional Services'],
-        'consult':[52,74,38,'Professional Services'],
-        'tech':[52,74,38,'Professional Services'],
-        'software':[52,74,38,'Professional Services'],
+        'professional':[52,74,38,'Prof. Svcs'],
+        'consult':[52,74,38,'Prof. Svcs'],
+        'tech':[52,74,38,'Prof. Svcs'],
+        'software':[52,74,38,'Prof. Svcs'],
       };
       var indKey = safe(industry).toLowerCase();
       var bmark = null;
@@ -1669,7 +1669,7 @@ function generatePDF() {
           bBarY += 8;
         });
         doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-        doc.text('Illustrative benchmark based on aggregated SME ESG assessment results. Indicative only; individual results vary.', M+5, bmy+32);
+        doc.text('Illustrative benchmark derived from myESGcheck assessments and public SME ESG research (2024-25). Individual scores vary by business size, subcontractor use and sector specialisation.', M+5, bmy+32);
         bmy += 38;
       }
 
@@ -1840,13 +1840,40 @@ function generatePDF() {
           fy += 12;
         });
       }
+      // Biggest Strength highlight box
+      var biggestStrength = null;
+      CATEGORIES.forEach(function(cat) {
+        var wts = cat.weights || cat.questions.map(function(){ return 1; });
+        cat.questions.forEach(function(q,qi) {
+          if (answers[cat.id+'_'+qi] === 'yes') {
+            var w = wts[qi] || 1;
+            if (!biggestStrength || w > biggestStrength.w) {
+              biggestStrength = { q:q, cat:cat.label, w:w };
+            }
+          }
+        });
+      });
+      if (biggestStrength && fy < H-40) {
+        doc.setFillColor(225,245,238);
+        doc.setDrawColor(184,224,208); doc.setLineWidth(0.4);
+        doc.roundedRect(M, fy, W-2*M, 20, 3, 3, 'FD');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+        doc.text('★ BIGGEST STRENGTH', M+5, fy+7);
+        doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+        var strengthTitle = safe(biggestStrength.cat)+': '+doc.splitTextToSize(safe(biggestStrength.q), W-2*M-12)[0];
+        doc.text(strengthTitle, M+5, fy+13);
+        doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(60,100,80);
+        doc.text('Your highest-weight practice already in place — this is a genuine asset in customer ESG questionnaires.', M+5, fy+18);
+        fy += 24;
+      }
+
       // Already Strong section
       if (goods.length > 0 && fy < H-40) {
         fy += 4;
         var maxGoods = 5;
         var shownGoods = 0;
         doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
-        doc.text('ALREADY STRONG \u2713 \u2014 '+goods.length+' area'+(goods.length!==1?'s':'')+' working well', M, fy);
+        doc.text('ALREADY STRONG ✓ — '+goods.length+' area'+(goods.length!==1?'s':'')+' working well', M, fy);
         fy += 6;
         goods.forEach(function(f) {
           if (fy > H-25 || shownGoods >= maxGoods) return;
@@ -2106,11 +2133,18 @@ function generatePDF() {
         }
       });
       if (totalLo > 0) {
+        var cappedLo = Math.min(totalLo, 20);
+        var cappedHi = Math.min(totalHi, 25);
+        var projMin = Math.min(95, overall + cappedLo);
+        var projMax = Math.min(95, overall + cappedHi);
+        var bandLabel = projMax >= 80 ? 'Leading' : projMax >= 60 ? 'Progressing' : projMax >= 40 ? 'Developing' : 'Starting out';
         doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
-        var projScore = Math.min(100, overall + Math.round((totalLo+totalHi)/2));
-        var impactMsg = 'Completing all High priority actions could improve your score by approximately '+totalLo+'\u2013'+totalHi+' points (from '+overall+'% to approximately '+projScore+'%).';
+        var impactMsg = 'Completing all High priority actions could improve your score by approximately '+cappedLo+'–'+cappedHi+' points (from '+overall+'% to approximately '+projMin+'–'+projMax+'%), moving towards the "'+bandLabel+'" band.';
         wrapText(impactMsg, M, y4+5, W-2*M, 5, 2);
-        y4 += 14;
+        y4 += 6;
+        doc.setFontSize(7.5); doc.setFont(undefined,'italic'); doc.setTextColor(160,158,150);
+        doc.text('Estimated impacts are based on question weighting and assume full implementation. Actual improvement depends on quality of implementation.', M, y4+5);
+        y4 += 10;
       }
       y4 += 4;
       doc.setFillColor(225,245,238);
@@ -2200,6 +2234,45 @@ function generatePDF() {
           wrappedLines.forEach(function(wl){ doc.text(wl, M+3, y5); y5+=5.5; });
         }
       });
+
+      // Effort vs Impact prioritisation table
+      if (y5 < H - 65) {
+        y5 += 8;
+        doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('Prioritisation guide \u2014 where to start', M, y5);
+        y5 += 7;
+        var eiRows = [
+          ['Supplier Code of Conduct',    'Low',    'High',   'Start now'],
+          ['Carbon baseline estimate',    'Low',    'High',   'Start now'],
+          ['Workforce data tracking',     'Low',    'Medium', 'Quick win'],
+          ['Scope 3 emissions mapping',   'Medium', 'High',   'Month 2-3'],
+          ['Screen top 5 suppliers',      'Medium', 'High',   'Month 2-3'],
+          ['Biodiversity site check',     'Medium', 'Medium', 'Month 3-6'],
+        ];
+        doc.setFillColor(245,244,240); doc.rect(M, y5, W-2*M, 7, 'F');
+        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+        doc.text('ACTION', M+3, y5+5); doc.text('EFFORT', M+100, y5+5);
+        doc.text('IMPACT', M+122, y5+5); doc.text('WHEN', M+145, y5+5);
+        y5 += 9;
+        eiRows.forEach(function(row,ri) {
+          if (y5 > H-18) return;
+          if (ri%2===0){doc.setFillColor(250,250,249);doc.rect(M,y5-2,W-2*M,9,'F');}
+          doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34);
+          doc.text(safe(row[0]),M+3,y5+4);
+          var efCol=row[1]==='Low'?[15,110,86]:[186,117,23], efBg=row[1]==='Low'?[225,245,238]:[250,238,220];
+          doc.setFillColor(efBg[0],efBg[1],efBg[2]); doc.roundedRect(M+98,y5,18,6,1,1,'F');
+          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(efCol[0],efCol[1],efCol[2]);
+          doc.text(row[1],M+107,y5+4.5,{align:'center'});
+          var imCol=row[2]==='High'?[15,110,86]:[130,128,122], imBg=row[2]==='High'?[225,245,238]:[240,238,234];
+          doc.setFillColor(imBg[0],imBg[1],imBg[2]); doc.roundedRect(M+120,y5,18,6,1,1,'F');
+          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(imCol[0],imCol[1],imCol[2]);
+          doc.text(row[2],M+129,y5+4.5,{align:'center'});
+          doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+          doc.text(safe(row[3]),M+145,y5+4.5);
+          doc.setDrawColor(232,230,225); doc.setLineWidth(0.2); doc.line(M,y5+7,W-M,y5+7);
+          y5 += 9;
+        });
+      }
       footer(6);;
 
       // ═══════════════════════════════════════════════════
