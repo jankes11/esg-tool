@@ -822,6 +822,30 @@ function restartAll() {
 // Set today's date
 document.getElementById('co-date').value = new Date().toISOString().split('T')[0];
 
+// DEV SHORTCUT: Ctrl+Shift+D — fills test data, skips paywall, shows results
+// Remove this block before going fully live if desired (harmless to leave in)
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+    // Fill company info
+    document.getElementById('co-name').value = 'Test Company Ltd';
+    document.getElementById('co-industry').value = 'Construction';
+    document.getElementById('co-size').value = '50-249';
+    // Fill all answers with a mix
+    var testAnswers = ['yes','partial','no','na','yes','partial','no','yes','partial','no'];
+    CATEGORIES.forEach(function(cat) {
+      cat.questions.forEach(function(q, qi) {
+        var v = testAnswers[(qi + cat.questions.length) % testAnswers.length];
+        answers[cat.id+'_'+qi] = v;
+      });
+    });
+    // Unlock PDF
+    _pdfUnlocked = true;
+    // Show results directly
+    buildResults('Dev', 'dev@test.com');
+    console.log('DEV MODE: paywall bypassed, results shown');
+  }
+});
+
 
 /* ── GDPR Toggle ──────────────────────────────────────────── */
 let _gdprOn = false;
@@ -989,7 +1013,37 @@ function toggleTheme() {
 
 document.getElementById('co-date').value = new Date().toISOString().split('T')[0];
 
+// DEV SHORTCUT: Ctrl+Shift+D — fills test data, skips paywall, shows results
+// Remove this block before going fully live if desired (harmless to leave in)
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+    // Fill company info
+    document.getElementById('co-name').value = 'Test Company Ltd';
+    document.getElementById('co-industry').value = 'Construction';
+    document.getElementById('co-size').value = '50-249';
+    // Fill all answers with a mix
+    var testAnswers = ['yes','partial','no','na','yes','partial','no','yes','partial','no'];
+    CATEGORIES.forEach(function(cat) {
+      cat.questions.forEach(function(q, qi) {
+        var v = testAnswers[(qi + cat.questions.length) % testAnswers.length];
+        answers[cat.id+'_'+qi] = v;
+      });
+    });
+    // Unlock PDF
+    _pdfUnlocked = true;
+    // Show results directly
+    buildResults('Dev', 'dev@test.com');
+    console.log('DEV MODE: paywall bypassed, results shown');
+  }
+});
+
 /* ── PDF Generation ──────────────────────────────────────── */
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
 /* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
    Clean rewrite. No emoji in PDF (use text symbols instead).
    All text uses ASCII/Latin-1 safe characters.
@@ -1208,7 +1262,7 @@ function generatePDF() {
       var y2 = sectionHeader('Score overview', 1, 'How your business performed across all 5 ESG areas');
 
       // Ring chart
-      var cx=M+28, cy=y2+38, r=26;
+      var cx=M+22, cy=y2+36, r=20;
       doc.setDrawColor(235,233,228); doc.setLineWidth(7);
       doc.circle(cx, cy, r, 'S');
       // Score arc
@@ -1226,28 +1280,27 @@ function generatePDF() {
       scoreTag(overall, cx-18, cy+18);
 
       // Bars
-      var by = y2+4;
+      var by = y2+2;
       catScoresArr.forEach(function(cs) {
         var sc = cs.score === null ? 0 : cs.score;
         var col = scoreColorArr(cs.score);
         var lbl = gradeLabel(cs.score);
         doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(safe(cs.cat.label), 72, by+4);
+        doc.text(safe(cs.cat.label), 60, by+4);
 
         // Bar background
         doc.setFillColor(235,233,228);
-        doc.roundedRect(72, by+10, W-M-72, 5, 1, 1, 'F');
-        // Bar fill
+        doc.roundedRect(60, by+10, W-M-60, 5, 1, 1, 'F');
         if (sc > 0) {
           doc.setFillColor(col[0],col[1],col[2]);
-          doc.roundedRect(72, by+10, (W-M-72)*sc/100, 5, 1, 1, 'F');
+          doc.roundedRect(60, by+10, (W-M-60)*sc/100, 5, 1, 1, 'F');
         }
         doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
         doc.text((cs.score===null?'N/A':sc+'%'), W-M, by+4, {align:'right'});
         doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
         doc.text(lbl, W-M, by+8.5, {align:'right'});
         doc.setDrawColor(235,233,228); doc.setLineWidth(0.3);
-        doc.line(72, by+18, W-M, by+18);
+        doc.line(60, by+18, W-M, by+18);
         by += 20;
       });
 
@@ -1337,14 +1390,14 @@ function generatePDF() {
       // Column headers
       // Action plan: 3-column layout, no timeline overlap
       // Col widths: Priority=26, Area=42, Action=W-2*M-26-42-8=approx 96mm
-      var aColP=M, aColA=M+28, aColQ=M+75, aColQW=W-2*M-75+M-2;
+      var aColP=M, aColA=M+26, aColQ=M+64, aColQW=W-M-64-2;
 
       doc.setFillColor(245,244,240);
       doc.rect(M, y4, W-2*M, 7, 'F');
       doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
       doc.text('PRIORITY', aColP+2, y4+5);
       doc.text('AREA', aColA+2, y4+5);
-      doc.text('ACTION REQUIRED', aColQ, y4+5);
+      doc.text('ACTION REQUIRED', aColQ+2, y4+5);
       y4 += 9;
 
       // Convert questions to action statements
@@ -1558,7 +1611,7 @@ function generatePDF() {
 
         doc.setFillColor(247,246,243);
         doc.setDrawColor(225,224,220); doc.setLineWidth(0.3);
-        doc.roundedRect(M, y7, W-2*M, 26, 2, 2, 'FD');
+        doc.roundedRect(M, y7, W-2*M, 32, 2, 2, 'FD');
 
         // Standard label
         doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
@@ -1574,11 +1627,13 @@ function generatePDF() {
         doc.text(safe(row.topic), M+4, y7+11);
         // What
         doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-        doc.text('What: '+safe(row.what).substring(0,85), M+4, y7+17);
-        // Why it matters
+        var whatLines = doc.splitTextToSize('What: '+safe(row.what), W-2*M-38);
+        doc.text(whatLines[0], M+4, y7+17);
         doc.setTextColor(15,110,86);
-        doc.text('Why it matters: '+safe(row.why).substring(0,80), M+4, y7+22);
-        y7 += 30;
+        var whyLines = doc.splitTextToSize('Why it matters: '+safe(row.why), W-2*M-38);
+        doc.text(whyLines[0], M+4, y7+22);
+        if (whyLines[1]) doc.text(whyLines[1], M+4, y7+27);
+        y7 += 36;
       });
       footer(7);
 
@@ -1673,6 +1728,7 @@ function generatePDF() {
     }
   }, 150);
 }
+
 
 
 
