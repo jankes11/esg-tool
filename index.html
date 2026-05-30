@@ -783,7 +783,7 @@ Write a short, practical improvement plan using plain English — no jargon. Thr
 2–3 medium-term actions. Keep them realistic for a ${size || 'small'} business in ${industry || 'their sector'}.
 
 3. Where they stand
-1–2 sentences of honest context: how does a ${size || 'small'} ${industry || 'business'} at ${overall}% compare to peers, and what do the better ones do differently?
+1–2 sentences of honest context: what do organisations with stronger ESG performance typically do differently — and what is the most practical first step for a ${size || 'small'} ${industry || 'business'} at this score?
 
 Keep the whole response under 200 words. Be direct and encouraging — not preachy.`;
 
@@ -1444,7 +1444,7 @@ function generatePDF() {
         [80,100,'Leading','Strong performance. You can confidently respond to customer ESG requests and most supplier audits.',[15,110,86],[225,245,238]],
         [60,79,'Progressing','Above average. You will pass most basic ESG checks. Some gaps remain for larger customers.',[29,158,117],[220,240,232]],
         [40,59,'Developing','Typical for SMEs starting their ESG journey. Key gaps may affect procurement eligibility.',[186,117,23],[250,238,220]],
-        [20,39,'Starting out','Significant gaps. Likely to struggle with ESG questions from banks, investors, or Tier 1 customers.',[153,60,29],[248,232,220]],
+        [20,39,'Starting out','Significant gaps. Likely to struggle with ESG questions from banks, investors, or larger customers.',[153,60,29],[248,232,220]],
         [0,19,'Needs action','Critical gaps present. ESG requirements from customers and regulators will be difficult to meet.',[163,45,45],[252,235,235]],
       ];
       bands.forEach(function(band, bi) {
@@ -1529,7 +1529,7 @@ function generatePDF() {
         'PRELIMINARY SCORE — based on '+completionPct+'% completion ('+answeredQs+' of '+totalQs+' questions answered). Complete the remaining questions for a full assessment. ' :
         '';
       var scoreDesc = scorePrefix + 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" band for this self-assessment. ';
-      if (overall < 40) scoreDesc += 'At this score, most businesses struggle to pass ESG questionnaires from Tier 1 contractors, banks, or large customers. The gap is closable — most of the quick wins cost nothing but time.';
+      if (overall < 40) scoreDesc += 'At this score, there are significant ESG gaps to address. Most quick wins cost nothing but time and a written document.';
       else if (overall < 60) scoreDesc += 'At this score, you will pass basic ESG checks from customers and banks, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
       else if (overall < 80) scoreDesc += 'You are performing well. At this score, you can confidently respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
       else scoreDesc += 'You are performing at a leading level. Your ESG performance is a genuine competitive advantage for winning contracts and demonstrating responsibility to customers and investors.';
@@ -1693,7 +1693,7 @@ function generatePDF() {
         [/^Do you know roughly how much energy/i, 'Without baseline data, you cannot set targets, report to customers, or access green finance.'],
         [/^Have you looked beyond your own premises/i, 'Scope 3 emissions are increasingly requested by larger customers and supply chain partners.'],
         [/^Have you thought about how things like extreme weather/i, 'Unassessed climate risks can affect insurance, lending terms, and business continuity planning.'],
-        [/^Do you have any goals or a rough plan to reduce/i, 'Without a documented target, you cannot demonstrate progress to customers, banks, or investors.'],
+        [/^Do you have any goals or a rough plan to reduce/i, 'Without a documented target, it is difficult to demonstrate environmental commitment to customers, banks, or procurement teams.'],
         [/^Have you actually changed anything/i, 'Without evidence of action, ESG claims lack credibility with customers and auditors.'],
         [/^Do any of the energy sources/i, 'Renewable energy sourcing is now a standard question in corporate supply chain ESG audits.'],
         [/^Do you communicate your environmental goals/i, 'Customers increasingly expect visible ESG commitments as a condition of supplier approval.'],
@@ -1711,7 +1711,7 @@ function generatePDF() {
         [/^Does your business do anything to give back/i, 'Community engagement is increasingly expected by local authorities and large corporate clients.'],
         [/^Is there a safe and easy way for your employees/i, 'Without a grievance mechanism, workplace issues escalate, creating legal risk and staff turnover.'],
         [/^Do you regularly share information with your staff/i, 'Poor internal communication increases staff uncertainty, reduces retention, and creates legal obligations under UK employment law.'],
-        [/^Do you track any basic workforce data/i, 'Without workforce data, you cannot respond to gender pay gap requests or demonstrate fair employment practices.'],
+        [/^Do you track any basic workforce data/i, 'Without workforce data, it becomes difficult to demonstrate fair employment practices to customers, investors, or procurement teams.'],
         [/^Do you offer your employees any training/i, 'Lack of development opportunities is a leading cause of staff turnover, which carries direct financial cost.'],
         [/^Do you pay all your employees at least the real Living Wage/i, 'Below-Living-Wage pay is increasingly cited in procurement disqualification and reputational risk.'],
         [/^Do you have any process for checking whether your main suppliers/i, 'Without supplier checks, you carry liability for your supply chain under UK Modern Slavery Act and CSDDD.'],
@@ -2063,7 +2063,7 @@ function generatePDF() {
       // Pre-calculate height before drawing box
       var nextSteps = [
         '1. Share this report with your leadership team. Assign a named owner and target date for each High priority action.',
-        '2. Book a free 30-minute ESG consultation at myesgcheck.com — we can help you prioritise and implement your action plan.',
+        '2. Start with your highest-risk gap this month. Use the action plan and resources in this report — most quick wins require time, not budget.',
         '3. Retake this assessment in 6-12 months. Your score will improve as you close gaps, and you will have documented evidence of progress to show customers and banks.',
       ];
       // Now calculate and draw box with correct height
