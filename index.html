@@ -1130,6 +1130,34 @@ document.addEventListener('keydown', function(e) {
    Designed to produce a genuinely useful 8-page ESG report.
 ──────────────────────────────────────────────────────────── */
 
+function getBusinessImpact(score, industry) {
+  var ind = safe(industry).toLowerCase();
+  var isConstruct = ind.indexOf('construct') > -1 || ind.indexOf('build') > -1 || ind.indexOf('civil') > -1;
+  var items = [];
+  if (score >= 60) {
+    items.push('+ You are likely to satisfy most basic customer ESG questionnaires');
+    items.push('+ You can demonstrate ESG awareness to banks and investors');
+    if (isConstruct) items.push('+ You are positioned to respond to standard PQQ sustainability sections');
+  } else if (score >= 40) {
+    items.push('+ You are likely to satisfy many basic ESG questionnaire requirements');
+    items.push('+ You can demonstrate foundational ESG practices to customers');
+    if (isConstruct) {
+      items.push('- Some Tier 1 contractor supply chain audits may identify gaps');
+      items.push('- Public sector frameworks may require higher evidence levels');
+    }
+    items.push('- Access to green finance typically requires a documented emissions baseline');
+  } else {
+    items.push('- Significant gaps may affect responses to customer ESG questionnaires');
+    items.push('- ESG requirements from banks and larger customers will be difficult to meet');
+    if (isConstruct) items.push('- Most PQQ sustainability sections will require improvement');
+    items.push('+ Quick wins are available — most require time, not budget');
+  }
+  if (score < 70) {
+    items.push('- CSRD-reporting customers are likely to request your Scope 3 data');
+  }
+  return items;
+}
+
 function generatePDF() {
   if (!_pdfUnlocked) { alert('Please verify your payment first.'); return; }
   var btn = document.getElementById('pdf-btn');
@@ -1585,6 +1613,71 @@ function generatePDF() {
       var lowestSentence = (lowestCat && lowestCat.score !== null) ?
         ' Your biggest improvement opportunity is '+safe(lowestCat.cat.label)+' ('+lowestCat.score+'%) — focus here first.' : '';
       wrapText(scoreDesc+lowestSentence, M+6, sb_y+15, W-2*M-12, 5.5, 4);
+
+      // Industry benchmark comparison bars
+      var benchmarks = {
+        'construction':[46,68,32,'Construction'], 'build':[46,68,32,'Construction'],
+        'civil':[46,68,32,'Construction'], 'manufactur':[49,71,35,'Manufacturing'],
+        'retail':[44,65,30,'Retail'], 'food':[44,65,30,'Retail/Food'],
+        'professional':[52,74,38,'Professional Services'],
+        'consult':[52,74,38,'Professional Services'],
+        'tech':[52,74,38,'Professional Services'],
+        'software':[52,74,38,'Professional Services'],
+      };
+      var indKey = safe(industry).toLowerCase();
+      var bmark = null;
+      Object.keys(benchmarks).forEach(function(k){ if(indKey.indexOf(k)>-1) bmark=benchmarks[k]; });
+
+      var bmy = sb_y + 36;
+      if (bmark && bmy < H-55) {
+        doc.setFillColor(240,248,255);
+        doc.setDrawColor(180,210,240); doc.setLineWidth(0.4);
+        doc.roundedRect(M, bmy, W-2*M, 34, 3, 3, 'FD');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(12,68,124);
+        doc.text(safe(co)+' vs. '+bmark[3]+' SMEs (first assessment)', M+5, bmy+7);
+        var barRows = [
+          [safe(co), overall, gcArr],
+          ['Typical '+bmark[3]+' SME', bmark[0], [130,128,122]],
+          ['Top 25% '+bmark[3], bmark[1], [15,110,86]],
+        ];
+        var bBarY = bmy+11;
+        var bBarW = W-2*M-75;
+        barRows.forEach(function(bd) {
+          doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
+          doc.text(bd[0].substring(0,22), M+5, bBarY+3);
+          doc.setFillColor(235,233,228); doc.roundedRect(M+68,bBarY,bBarW,4,1,1,'F');
+          doc.setFillColor(bd[2][0],bd[2][1],bd[2][2]);
+          doc.roundedRect(M+68,bBarY,bBarW*bd[1]/100,4,1,1,'F');
+          doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(bd[2][0],bd[2][1],bd[2][2]);
+          doc.text(bd[1]+'%', M+68+bBarW+3, bBarY+3);
+          bBarY += 8;
+        });
+        doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+        doc.text('Based on EFRAG/BSI sector ESG assessment data 2024-25. Indicative only; individual results vary.', M+5, bmy+32);
+        bmy += 38;
+      }
+
+      // Business impact box
+      var bimpactItems = getBusinessImpact(overall, industry);
+      if (bimpactItems.length > 0 && bmy < H-60) {
+        var biH = 10 + bimpactItems.length * 7;
+        doc.setFillColor(247,246,243);
+        doc.setDrawColor(225,224,220); doc.setLineWidth(0.4);
+        doc.roundedRect(M, bmy, W-2*M, biH, 3, 3, 'FD');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('What this score means in practice', M+5, bmy+7);
+        var biLineY = bmy+13;
+        bimpactItems.forEach(function(item) {
+          var good = item.charAt(0)==='+';
+          doc.setFillColor(good?15:163, good?110:45, good?86:45);
+          doc.circle(M+5, biLineY-1, 1.5, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'normal');
+          doc.setTextColor(good?8:100, good?80:30, good?65:30);
+          doc.text(safe(item.slice(1).trim()), M+10, biLineY);
+          biLineY += 7;
+        });
+      }
+
       footer(3);
 
       // ═══════════════════════════════════════════════════
@@ -2097,19 +2190,19 @@ function generatePDF() {
       y7 += 6;
 
       var esrsData = [
-        { std:'ESRS E1 / VSME B3', topic:'Climate change & energy', catId:'climate', 
+        { std:'Climate & Energy', stdCode:'ESRS E1 / VSME B3', topic:'Greenhouse gas emissions, energy use, climate risks and targets', catId:'climate', 
           what:'Covers greenhouse gas emissions (Scope 1, 2, 3), energy consumption, climate risks, and reduction targets.',
           why:'Increasingly required by banks for lending decisions and by large customers in their supply chain audits.' },
-        { std:'ESRS E2-E5 / VSME B4-B7', topic:'Environment (pollution, water, biodiversity, circular economy)', catId:'environment',
+        { std:'Environment', stdCode:'ESRS E2-E5 / VSME B4-B7', topic:'Pollution prevention, water stewardship, biodiversity and circular economy', catId:'environment',
           what:'Covers pollution prevention, water stewardship, biodiversity impact, and resource efficiency.',
           why:'UK and EU procurement increasingly requires suppliers to demonstrate environmental responsibility beyond carbon.' },
-        { std:'ESRS S1 / VSME B8-B10', topic:'Own workforce & workplace', catId:'social',
+        { std:'People & Workplace', stdCode:'ESRS S1 / VSME B8-B10', topic:'Health & safety, fair pay, working conditions and training', catId:'social',
           what:'Covers health & safety, fair pay, working conditions, training, and employee rights.',
           why:'Employee wellbeing is a primary ESG concern for investors and is increasingly tied to contract eligibility.' },
-        { std:'ESRS S2 / VSME B11', topic:'Supply chain workers & due diligence', catId:'supply',
+        { std:'Supply Chain Due Diligence', stdCode:'ESRS S2 / VSME B11', topic:'Supplier human rights, labour standards and ethical procurement', catId:'supply',
           what:'Covers supplier human rights, labour standards, and ethical procurement.',
           why:'The CSDDD (Corporate Sustainability Due Diligence Directive) is expected to extend supply chain due diligence expectations to more businesses over time.' },
-        { std:'ESRS G1 / VSME B11', topic:'Business conduct & governance', catId:'governance',
+        { std:'Business Ethics & Governance', stdCode:'ESRS G1 / VSME B11', topic:'Anti-bribery, data protection, ethics policies and stakeholder engagement', catId:'governance',
           what:'Covers anti-bribery, data protection, ethics policies, and stakeholder engagement.',
           why:'Strong governance is the foundation that makes all other ESG disclosures credible to external parties.' },
       ];
@@ -2122,11 +2215,13 @@ function generatePDF() {
 
         doc.setFillColor(247,246,243);
         doc.setDrawColor(225,224,220); doc.setLineWidth(0.3);
-        doc.roundedRect(M, y7, W-2*M, 32, 2, 2, 'FD');
+        doc.roundedRect(M, y7, W-2*M, 38, 2, 2, 'FD');
 
         // Standard label
-        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
-        doc.text(safe(row.std), M+4, y7+6);
+        doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
+        doc.text(safe(row.std), M+4, y7+7);
+        doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+        doc.text(safe(row.stdCode||''), M+4, y7+12);
         // Score
         if (sc !== null) {
           doc.setFontSize(10); doc.setFont(undefined,'bold');
@@ -2135,16 +2230,16 @@ function generatePDF() {
         }
         // Topic
         doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(safe(row.topic), M+4, y7+11);
+        doc.text(safe(row.topic), M+4, y7+17);
         // What
         doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
         var whatLines = doc.splitTextToSize('What: '+safe(row.what), W-2*M-38);
-        doc.text(whatLines[0], M+4, y7+17);
+        doc.text(whatLines[0], M+4, y7+23);
         doc.setTextColor(15,110,86);
-        var whyLines = doc.splitTextToSize('Why it matters: '+safe(row.why), W-2*M-38);
-        doc.text(whyLines[0], M+4, y7+22);
-        if (whyLines[1]) doc.text(whyLines[1], M+4, y7+27);
-        y7 += 36;
+        var whyLines = doc.splitTextToSize('Why: '+safe(row.why), W-2*M-38);
+        doc.text(whyLines[0], M+4, y7+28);
+        if (whyLines[1]) doc.text(whyLines[1], M+4, y7+33);
+        y7 += 42;
       });
       footer(8);;
 
@@ -2194,16 +2289,7 @@ function generatePDF() {
       ];
 
       // Consulting upsell box
-      doc.setFillColor(4,52,44);
-      doc.roundedRect(M, y8, W-2*M, 22, 3, 3, 'F');
-      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-      doc.text('Need help implementing this plan?', M+6, y8+8);
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(120,200,175);
-      doc.text('Book a free 30-minute ESG Action Call at myesgcheck.com — no obligation, no jargon.', M+6, y8+14);
-      doc.setTextColor(79,214,168); doc.setFont(undefined,'bold');
-      doc.text('myesgcheck.com/consultation', M+6, y8+20);
-      try { doc.link(M+6, y8+15, 80, 6, { url: 'https://myesgcheck.com' }); } catch(e) {}
-      y8 += 28;
+            y8 += 4; // consultation CTA removed
       // Resources table
       doc.setFillColor(245,244,240);
       doc.rect(M, y8, W-2*M, 8, 'F');
