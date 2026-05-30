@@ -138,7 +138,12 @@ RULES:
 - For construction firms at <50%: start with supplier code of conduct and basic screening; suggest EPDs and PAS 2080 only as medium-term priorities
 - For PAS 2080: say "use PAS 2080 principles" not specific section numbers — too technical for small firms
 - Suggest concrete KPIs where helpful: e.g. "aim to screen 80% of suppliers by spend" or "target 15% diesel reduction on site"
-- Keep under 260 words. Be direct, practical, encouraging.`;
+- Keep under 280 words. Be direct, practical, encouraging.
+- MANDATORY COVERAGE: For every category with score < 50%, generate at least 1 specific recommendation.
+  Categories below 50% must each appear in Quick wins or Bigger priorities.
+- MANDATORY COVERAGE: For categories between 50-59%, include at least 1 recommendation in Bigger priorities.
+- Do NOT focus only on supply chain and carbon if other gaps exist (e.g. lifecycle impact, biodiversity, customer transparency, workforce monitoring).
+- Spread recommendations across ALL gap areas, not just the lowest scoring category.`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
