@@ -134,8 +134,11 @@ RULES:
 - Be specific to the industry — generic advice is less useful than sector-specific guidance
 - Prioritise the lowest-scoring category — if Supply Chain scores 43%, include at least one specific supply chain action
 - Do not default to climate/environment if other categories score lower
-- For PAS 2080: reference principles not technical sections (too advanced for small firms)
-- Keep under 250 words. Be direct, practical, encouraging.`;
+- Use a GRADUATED approach to maturity: start with basic foundations (e.g. supplier code of conduct, ESG questionnaire) before suggesting advanced standards (EPDs, PAS 2080, ISO 14001)
+- For construction firms at <50%: start with supplier code of conduct and basic screening; suggest EPDs and PAS 2080 only as medium-term priorities
+- For PAS 2080: say "use PAS 2080 principles" not specific section numbers — too technical for small firms
+- Suggest concrete KPIs where helpful: e.g. "aim to screen 80% of suppliers by spend" or "target 15% diesel reduction on site"
+- Keep under 260 words. Be direct, practical, encouraging.`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
