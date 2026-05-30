@@ -1937,6 +1937,9 @@ function generatePDF() {
       // Column headers
       // Action plan: 3-column layout, no timeline overlap
       // Col widths: Priority=26, Area=42, Action=W-2*M-26-42-8=approx 96mm
+      // Pre-declare projected score vars (used by maturity path on score page)
+      var projMin = overall, projMax = overall, bandLabel = gradeLabel(overall);
+
       var aColP=M, aColA=M+26, aColQ=M+64, aColQW=W-M-64-2;
 
       var aColI = W-M-20; // impact column
@@ -2176,11 +2179,13 @@ function generatePDF() {
         var bandLabel = projMax >= 80 ? 'Leading' : projMax >= 60 ? 'Progressing' : projMax >= 40 ? 'Developing' : 'Starting out';
         doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
         var impactMsg = 'Completing all High priority actions could improve your score by approximately '+cappedLo+'-'+cappedHi+' points (from '+overall+'% to approximately '+projMin+'-'+projMax+'%), moving you into the "'+bandLabel+'" band. Actual improvement depends on implementation quality and evidence available.';
-        wrapText(impactMsg, M, y4+5, W-2*M, 5, 2);
-        y4 += 6;
+        var impactLines = doc.splitTextToSize(impactMsg, W-2*M);
+        impactLines.forEach(function(il){ doc.text(il, M, y4+5); y4 += 5.5; });
+        y4 += 4;
         doc.setFontSize(7.5); doc.setFont(undefined,'italic'); doc.setTextColor(160,158,150);
-        doc.text('Estimated impacts are based on question weighting and assume full implementation. Actual improvement depends on quality of implementation.', M, y4+5);
-        y4 += 10;
+        var discLines = doc.splitTextToSize('Estimated impacts are based on question weighting and assume full implementation. Actual improvement depends on quality of implementation.', W-2*M);
+        discLines.forEach(function(dl){ doc.text(dl, M, y4+4); y4 += 5; });
+        y4 += 8;
       }
       y4 += 4;
       doc.setFillColor(225,245,238);
