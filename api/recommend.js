@@ -1,102 +1,765 @@
-export const config = { runtime: 'edge' };
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESG Assessment Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --bg:#f5f4f0;--surf:#ffffff;--surf2:#fafaf8;--off:#ededea;
+  --bdr:rgba(30,28,20,.10);--div:rgba(30,28,20,.07);
+  --tx:#1a1916;--muted:#6b6960;--faint:#b0aea6;--inv:#f5f4f0;
+  --p:#0f6e56;--ph:#085041;--pa:#04342c;--plight:#e1f5ee;
+  --warn:#ba7517;--err:#a32d2d;--gold:#854f0b;
+  --r-sm:.375rem;--r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;--r-full:9999px;
+  --sh-sm:0 1px 3px rgba(0,0,0,.06);--sh-md:0 4px 16px rgba(0,0,0,.08);
+  --font:'Inter',system-ui,sans-serif;
+  --trans:.16s cubic-bezier(.16,1,.3,1);
+}
+[data-theme="dark"] {
+  --bg:#141412;--surf:#1c1b19;--surf2:#211f1d;--off:#242220;
+  --bdr:rgba(255,255,255,.08);--div:rgba(255,255,255,.05);
+  --tx:#d4d2ce;--muted:#918f89;--faint:#505049;--inv:#1c1b19;
+  --p:#4f98a3;--ph:#227f8b;--pa:#1a626b;--plight:#1e3533;
+}
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background:var(--surf2)!important;
+  color:var(--tx)!important;
+  border-color:rgba(255,255,255,.12)!important;
+  color-scheme:dark;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {color:var(--faint)!important}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:none}
+body{min-height:100dvh;font-family:var(--font);font-size:15px;color:var(--tx);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
+a,button,input,select,textarea{font:inherit;color:inherit;transition:all var(--trans)}
+button{cursor:pointer;background:none;border:none}
+img{display:block;max-width:100%}
+h1,h2,h3{line-height:1.15;text-wrap:balance}
+p{text-wrap:pretty;max-width:68ch}
+::selection{background:rgba(15,110,86,.15)}
+:focus-visible{outline:2px solid var(--p);outline-offset:3px;border-radius:var(--r-sm)}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
-const RATE_LIMIT_WINDOW = 24 * 60 * 60 * 1000;
-const MAX_REQUESTS = 3;
-const store = new Map();
+/* ─── LAYOUT ──────────────────────────────────────────────── */
+.container{max-width:860px;margin:0 auto;padding:0 1.25rem}
+.container-wide{max-width:1060px;margin:0 auto;padding:0 1.25rem}
 
-function getIP(req) {
-  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-         req.headers.get('x-real-ip') || 'unknown';
+/* ─── HEADER ──────────────────────────────────────────────── */
+header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 85%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr)}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;gap:1rem}
+.brand{display:flex;align-items:center;gap:.625rem;font-weight:600;font-size:.875rem;text-decoration:none;color:var(--tx)}
+.brand-icon{width:28px;height:28px;color:var(--p)}
+.nav-right{display:flex;align-items:center;gap:.75rem}
+.progress-info{font-size:.8125rem;color:var(--muted)}
+.theme-btn{width:36px;height:36px;border-radius:var(--r-full);border:1px solid var(--bdr);background:var(--surf);display:grid;place-items:center;font-size:.875rem}
+.theme-btn:hover{background:var(--off)}
+.prog-track{height:3px;background:var(--off)}
+.prog-fill{height:100%;background:var(--p);transition:width .35s ease}
+
+/* ─── SCREENS ─────────────────────────────────────────────── */
+.screen{display:none;padding:2.5rem 0 5rem}
+.screen.active{display:block}
+
+/* ─── BUTTONS ─────────────────────────────────────────────── */
+.btn-primary{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.75rem;border-radius:var(--r-full);background:var(--p);color:#fff;font-weight:600;font-size:.9375rem;border:none;cursor:pointer;min-height:48px;white-space:nowrap}
+.btn-primary:hover{background:var(--ph);transform:translateY(-1px);box-shadow:var(--sh-md)}
+.btn-primary:active{transform:translateY(0)}
+.btn-secondary{display:inline-flex;align-items:center;gap:.5rem;padding:.625rem 1.25rem;border-radius:var(--r-full);border:1.5px solid var(--bdr);background:var(--surf);font-weight:500;font-size:.875rem;cursor:pointer;min-height:40px;white-space:nowrap}
+.btn-secondary:hover{background:var(--off);border-color:var(--p)}
+.btn-stripe{display:inline-flex;align-items:center;gap:.625rem;padding:.875rem 2.25rem;border-radius:var(--r-full);background:#4f46e5;color:#fff;font-weight:700;font-size:1.0625rem;border:none;cursor:pointer;min-height:54px;text-decoration:none;box-shadow:0 4px 20px rgba(79,70,229,.4)}
+.btn-stripe:hover{background:#4338ca;transform:translateY(-2px);box-shadow:0 8px 28px rgba(79,70,229,.5)}
+
+/* ─── WELCOME ─────────────────────────────────────────────── */
+.hero{text-align:center;padding:3.5rem 1rem 3rem}
+.hero-tag{font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--p);margin-bottom:.875rem;font-weight:600}
+.hero h1{font-size:clamp(2rem,4vw,3rem);font-weight:700;margin-bottom:1rem;max-width:14ch;margin-inline:auto}
+.hero p{color:var(--muted);font-size:1.0625rem;max-width:42ch;margin-inline:auto;margin-bottom:2.25rem}
+.cat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.625rem;max-width:720px;margin:0 auto 2.25rem}
+.cat-pill{padding:.75rem .625rem;border-radius:var(--r-xl);border:1px solid var(--bdr);background:var(--surf);text-align:center;font-size:.8125rem}
+.cat-pill .icon{font-size:1.375rem;margin-bottom:.25rem}
+.cat-pill .name{font-weight:600;font-size:.875rem;display:block;margin-bottom:.125rem}
+.cat-pill .qs{font-size:.75rem;color:var(--muted)}
+.hero-note{font-size:.8125rem;color:var(--muted);margin-top:.875rem}
+
+/* ─── COMPANY FORM ────────────────────────────────────────── */
+.form-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-xl);padding:2rem;margin-bottom:1.25rem;box-shadow:var(--sh-sm)}
+.form-card h2{font-size:1.125rem;font-weight:600;margin-bottom:.375rem}
+.form-card .sub{color:var(--muted);font-size:.875rem;margin-bottom:1.5rem}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-weight:500;font-size:.8125rem;margin-bottom:.375rem;color:var(--muted)}
+.field input,.field select{width:100%;padding:.625rem .875rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.875rem;color:var(--tx)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px rgba(15,110,86,.1)}
+.field input::placeholder{color:var(--faint)}
+
+/* ─── ASSESSMENT ──────────────────────────────────────────── */
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.section-badge{display:inline-flex;align-items:center;gap:.375rem;padding:.25rem .875rem;border-radius:var(--r-full);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.badge-climate{background:#e1f5ee;color:#085041}
+.badge-environment{background:#eaf3de;color:#27500a}
+.badge-social{background:#faeeda;color:#633806}
+.badge-supply{background:#fbeaf0;color:#72243e}
+.badge-governance{background:#e6f1fb;color:#0c447c}
+.section-count{font-size:.8125rem;color:var(--faint)}
+
+.q-card{background:var(--surf);border:1.5px solid var(--bdr);border-radius:var(--r-xl);padding:1.375rem 1.5rem;margin-bottom:.75rem;transition:border-color var(--trans),box-shadow var(--trans)}
+.q-card.answered{border-color:color-mix(in oklab,var(--p) 40%,var(--bdr))}
+.q-num{font-size:.75rem;color:var(--faint);margin-bottom:.375rem;text-transform:uppercase;letter-spacing:.05em}
+.q-text{font-size:.9375rem;font-weight:500;margin-bottom:1rem;line-height:1.55}
+.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:.625rem}
+.opt{padding:.625rem .5rem;border-radius:var(--r-lg);border:1.5px solid var(--bdr);background:var(--surf2);cursor:pointer;text-align:center;font-size:.8125rem;font-weight:500;transition:all var(--trans);color:var(--tx)}
+.opt:hover{transform:translateY(-2px);box-shadow:var(--sh-sm)}
+.opt .opt-desc{font-size:.6875rem;opacity:.65;margin-top:.2rem}
+.opt.sel-yes{background:rgba(15,110,86,.1);border-color:var(--p);color:var(--p)}
+.opt.sel-partial{background:rgba(186,117,23,.1);border-color:var(--warn);color:var(--warn)}
+.opt.sel-no{background:rgba(163,45,45,.09);border-color:var(--err);color:var(--err)}
+.opt.sel-na{background:var(--off);border-color:var(--muted);color:var(--muted)}
+.q-note{margin-top:.875rem}
+.q-note textarea{width:100%;padding:.625rem .75rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--off);font-size:.8125rem;resize:vertical;min-height:56px;color:var(--tx)}
+.q-note textarea:focus{outline:none;border-color:var(--p)}
+.q-note textarea::placeholder{color:var(--faint)}
+
+/* ─── NAV BUTTONS ─────────────────────────────────────────── */
+.nav-btns{display:flex;justify-content:space-between;align-items:center;margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--div)}
+.step-dots{display:flex;gap:.375rem}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--off);transition:all var(--trans);cursor:pointer;border:none}
+.dot:hover{background:var(--faint)}
+.dot.active{background:var(--p);width:20px;border-radius:4px}
+.dot.done{background:color-mix(in oklab,var(--p) 40%,var(--bg))}
+
+/* ─── EMAIL GATE ──────────────────────────────────────────── */
+.gate-overlay{background:var(--bg);padding:3rem 1.25rem}
+.gate-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-xl);padding:2.5rem;max-width:520px;margin:0 auto;box-shadow:var(--sh-md);text-align:center}
+.gate-card h2{font-size:1.375rem;font-weight:700;margin-bottom:.625rem}
+.gate-card p{color:var(--muted);font-size:.9375rem;margin-bottom:1.75rem;max-width:38ch;margin-inline:auto}
+.gate-field{text-align:left;margin-bottom:1rem}
+.gate-field label{display:block;font-weight:500;font-size:.8125rem;margin-bottom:.375rem;color:var(--muted)}
+.gate-field input{width:100%;padding:.75rem 1rem;border:1.5px solid var(--bdr);border-radius:var(--r-md);background:var(--surf2);font-size:.9375rem}
+.gate-field input:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px rgba(15,110,86,.1)}
+.gdpr-row{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:1.5rem;text-align:left;padding:.875rem 1rem;border:2px solid var(--bdr);border-radius:.75rem;cursor:pointer;background:var(--surf2)}
+.gdpr-row:hover{border-color:#1d9e75}
+.gdpr-row input[type="checkbox"]{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.gate-err{color:var(--err);font-size:.8125rem;margin-bottom:.875rem;display:none;padding:.5rem .75rem;background:rgba(163,45,45,.08);border-radius:.5rem}
+.gate-card{background:var(--surf)!important}
+.gate-field input{background:var(--surf2)!important;color:var(--tx)!important;border-color:var(--bdr)!important}
+.gate-field input:focus{background:var(--surf2)!important;color:var(--tx)!important}
+.gate-field input::placeholder{color:var(--faint)!important}
+[data-theme="dark"] .gate-field input{background:var(--surf2)!important;color:var(--tx)!important}
+[data-theme="dark"] #gdpr-row{border-color:var(--bdr)!important;background:var(--surf2)!important}
+[data-theme="dark"] #custom-check-box{background:var(--surf)!important;border-color:var(--muted)!important}
+
+/* ─── RESULTS ─────────────────────────────────────────────── */
+.results-hero{text-align:center;padding:2.5rem 1rem 2rem}
+.results-hero .co-label{font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.625rem}
+.results-hero h1{font-size:clamp(1.5rem,3vw,2.25rem);font-weight:700;margin-bottom:1.5rem}
+.ring-wrap{position:relative;width:148px;height:148px;margin:0 auto 1rem}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-center{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring-score{font-size:2.5rem;font-weight:700;line-height:1}
+.ring-lbl{font-size:.6875rem;color:var(--muted);margin-top:.125rem}
+.ring-grade{font-size:.9375rem;font-weight:600;margin-top:.5rem}
+.score-summary{font-size:.875rem;color:var(--muted);margin:.875rem auto 0;max-width:38ch}
+
+.cat-results-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;margin:2rem 0}
+.rc{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-xl);padding:1.125rem;text-align:center;box-shadow:var(--sh-sm)}
+.rc-icon{font-size:1.25rem;margin-bottom:.375rem}
+.rc-name{font-size:.6875rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.rc-score{font-size:1.375rem;font-weight:700;margin:.375rem 0}
+.rc-grade{font-size:.75rem;font-weight:600}
+.bar-bg{height:5px;background:var(--off);border-radius:3px;margin-top:.625rem;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .9s ease .3s}
+
+.findings{margin:2rem 0}
+.findings h2{font-size:1.0625rem;font-weight:600;margin-bottom:.875rem}
+.finding-item{display:flex;gap:.875rem;padding:.875rem 1rem;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-lg);margin-bottom:.5rem;box-shadow:var(--sh-sm)}
+.fdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:.3rem}
+.fdot-gap{background:var(--err)}
+.fdot-partial{background:var(--warn)}
+.finding-cat{font-size:.8125rem;font-weight:600;margin-bottom:.125rem}
+.finding-q{font-size:.8125rem;color:var(--muted)}
+.finding-note{font-size:.75rem;color:var(--faint);margin-top:.25rem;font-style:italic}
+
+.actions-box{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-xl);padding:1.75rem;margin:1.75rem 0;box-shadow:var(--sh-sm)}
+.actions-box h2{font-size:1.0625rem;font-weight:600;margin-bottom:.375rem}
+.actions-box .sub{color:var(--muted);font-size:.875rem;margin-bottom:1.25rem}
+.action-row{display:flex;align-items:flex-start;gap:.875rem;padding:.875rem 0;border-bottom:1px solid var(--div)}
+.action-row:last-child{border-bottom:none}
+.ptag{flex-shrink:0;padding:.125rem .625rem;border-radius:var(--r-full);font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-top:.125rem}
+.p-high{background:rgba(163,45,45,.1);color:var(--err)}
+.p-med{background:rgba(186,117,23,.1);color:var(--warn)}
+.action-cat{font-size:.8125rem;font-weight:600;margin-bottom:.1rem}
+.action-q{font-size:.8125rem;color:var(--muted)}
+
+/* ─── AI BOX ──────────────────────────────────────────────── */
+.ai-box{border:1px solid var(--bdr);border-radius:var(--r-xl);padding:1.5rem;margin:1.75rem 0;background:color-mix(in oklab,var(--plight) 60%,var(--surf))}
+.ai-hdr{display:flex;align-items:center;gap:.5rem;font-size:.875rem;font-weight:600;margin-bottom:.875rem;color:var(--p)}
+.ai-content{font-size:.875rem;line-height:1.75;color:var(--tx);white-space:pre-wrap}
+.ai-loading{color:var(--muted);font-style:italic}
+.ai-spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--plight);border-top-color:var(--p);border-radius:50%;animation:spin .7s linear infinite;margin-right:.375rem;vertical-align:-.15em}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── STRIPE SECTION ─────────────────────────────────────── */
+.upgrade-box{background:var(--surf);border:2px solid var(--p);border-radius:var(--r-xl);padding:2rem;margin:2rem 0;text-align:center;box-shadow:var(--sh-md)}
+.upgrade-box h2{font-size:1.1875rem;font-weight:700;margin-bottom:.625rem}
+.upgrade-box p{color:var(--muted);font-size:.9375rem;margin-bottom:.375rem;max-width:44ch;margin-inline:auto}
+.upgrade-features{display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem;margin:1.25rem 0 1.5rem}
+.uf{display:flex;align-items:center;gap:.375rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:var(--r-full);color:var(--ph)}
+.upgrade-note{font-size:.75rem;color:var(--faint);margin-top:.75rem}
+
+.export-btns{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin:1.75rem 0}
+.legal-note{text-align:center;color:var(--faint);font-size:.75rem;margin-top:2rem}
+
+/* ─── RESPONSIVE ──────────────────────────────────────────── */
+@media(max-width:680px){
+  .cat-grid{grid-template-columns:repeat(2,1fr)}
+  .cat-pill:last-child{grid-column:span 2}
+  .opts{grid-template-columns:repeat(2,1fr)}
+  .cat-results-grid{grid-template-columns:repeat(2,1fr)}
+  .field-grid{grid-template-columns:1fr}
+  .gate-card{padding:1.5rem}
+}
+@media(max-width:420px){
+  .cat-grid{grid-template-columns:1fr}
+  .cat-pill:last-child{grid-column:span 1}
+  .cat-results-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="container-wide">
+    <div class="nav">
+      <a class="brand" href="#" onclick="showScreen('welcome');return false">
+        <svg class="brand-icon" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <path d="M4 21C8 15 12 13 16 13C20 13 23 10 24 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="18" cy="8" r="3" stroke="currentColor" stroke-width="2"/>
+          <path d="M5 22H23" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="11" cy="16" r="1.5" fill="currentColor" opacity=".4"/>
+        </svg>
+        <span>ESG Assessment</span>
+      </a>
+      <div class="nav-right">
+        <span class="progress-info" id="prog-info"></span>
+        <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle dark mode">◐</button>
+      </div>
+    </div>
+  </div>
+  <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+</header>
+
+<!-- ══ WELCOME ══ -->
+<div class="screen active" id="screen-welcome">
+  <div class="container">
+    <div class="hero">
+      <div class="hero-tag">Free ESG Self-Assessment</div>
+      <h1>How sustainable is your business, really?</h1>
+      <p>Answer 43 plain-English questions across 5 areas, get your ESG score, and receive an AI-powered action plan — in about 20 minutes.</p>
+      <div class="cat-grid">
+        <div class="cat-pill"><div class="icon">🌡️</div><span class="name">Climate</span><span class="qs">8 questions</span></div>
+        <div class="cat-pill"><div class="icon">🌿</div><span class="name">Environment</span><span class="qs">8 questions</span></div>
+        <div class="cat-pill"><div class="icon">🤝</div><span class="name">Your People</span><span class="qs">10 questions</span></div>
+        <div class="cat-pill"><div class="icon">🔗</div><span class="name">Supply Chain</span><span class="qs">7 questions</span></div>
+        <div class="cat-pill"><div class="icon">💼</div><span class="name">Governance</span><span class="qs">10 questions</span></div>
+      </div>
+      <button class="btn-primary" onclick="showScreen('company')">Start assessment →</button>
+      <p class="hero-note">No login · No jargon · Aligned with ESRS/VSME 2024 · Results stay in your browser</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ COMPANY ══ -->
+<div class="screen" id="screen-company">
+  <div class="container">
+    <div class="form-card">
+      <h2>Tell us about your business</h2>
+      <p class="sub">This personalises your report. Everything stays in your browser — nothing is sent anywhere.</p>
+      <div class="field-grid">
+        <div class="field"><label for="co-name">Company name</label><input id="co-name" type="text" placeholder="e.g. Acme Ltd" style="background:var(--surf2);color:var(--tx)"></div>
+        <div class="field"><label for="co-industry">Industry / sector</label><input id="co-industry" type="text" placeholder="e.g. Construction, Retail, IT Services" style="background:var(--surf2);color:var(--tx)"></div>
+        <div class="field"><label for="co-size">Number of employees</label>
+          <select id="co-size" style="background:var(--surf2);color:var(--tx)">
+            <option value="">Select…</option>
+            <option>1–10</option><option>11–49</option><option>50–249</option><option>250+</option>
+          </select>
+        </div>
+        <div class="field"><label for="co-assessor">Your name (optional)</label><input id="co-assessor" type="text" placeholder="Person completing this" style="background:var(--surf2);color:var(--tx)"></div>
+      </div>
+      <div class="field" style="max-width:220px"><label for="co-date">Date</label><input id="co-date" type="date" style="background:var(--surf2);color:var(--tx)"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:.625rem">
+      <button class="btn-secondary" onclick="showScreen('welcome')">← Back</button>
+      <button class="btn-primary" onclick="startAssessment()">Begin →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ASSESSMENT ══ -->
+<div class="screen" id="screen-assessment">
+  <div class="container" id="assessment-container"></div>
+</div>
+
+<!-- ══ EMAIL GATE ══ -->
+<div class="screen" id="screen-gate">
+  <div class="gate-overlay">
+    <div class="gate-card">
+      <div style="font-size:2rem;margin-bottom:.75rem">🎉</div>
+      <h2>You've completed the assessment!</h2>
+      <p>Enter your email to unlock your full ESG score, category breakdown, and AI-powered recommendations.</p>
+      <div class="gate-field">
+        <label for="gate-name">First name</label>
+        <input id="gate-name" type="text" placeholder="Your first name" autocomplete="given-name" style="background:var(--surf2);color:var(--tx);border-color:var(--bdr)">
+      </div>
+      <div class="gate-field">
+        <label for="gate-email">Work email address</label>
+        <input id="gate-email" type="email" placeholder="you@yourcompany.com" autocomplete="email" style="background:var(--surf2);color:var(--tx);border-color:var(--bdr)">
+      </div>
+      <div id="gdpr-row" onclick="toggleGDPR(event)" style="display:flex;flex-direction:row;align-items:flex-start;gap:12px;margin-bottom:20px;padding:14px 16px;border:2px solid var(--bdr);border-radius:12px;cursor:pointer;background:var(--surf2);text-align:left;width:100%;box-sizing:border-box">
+        <input type="checkbox" id="gate-gdpr" style="position:absolute;opacity:0;width:0;height:0">
+        <div id="custom-check-box" style="width:22px;height:22px;min-width:22px;min-height:22px;border:2.5px solid var(--muted);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--surf);box-sizing:border-box;margin-top:1px">
+          <svg id="check-tick" style="display:none;width:13px;height:13px" viewBox="0 0 13 13" fill="none"><polyline points="1.5,6.5 5,10 11.5,2.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span style="font-size:13px;color:#6b6960;line-height:1.55;user-select:none;flex:1">I agree to receive my ESG report and occasional tips on improving sustainability performance. I can unsubscribe at any time. See our <a href="/privacy" target="_blank" onclick="event.stopPropagation()" style="color:#0f6e56;text-decoration:underline">Privacy Policy</a>.</span>
+      </div>
+      <p class="gate-err" id="gate-err" style="display:none"></p>
+      <button class="btn-primary" style="width:100%;justify-content:center;font-size:1rem" onclick="submitGate()">Show my results →</button>
+      <p style="font-size:.75rem;color:var(--faint);margin-top:.875rem">Your data is never sold or shared with third parties.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<div class="screen" id="screen-results">
+  <div class="container-wide" id="results-container"></div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   CONFIGURATION — replace with your own values
+══════════════════════════════════════════════════════════ */
+const CONFIG = {
+  STRIPE_LINK: 'https://buy.stripe.com/cNi14o2mdfrfewRbgo8bS01',
+};
+
+/* ══════════════════════════════════════════════════════════
+   QUESTIONS — ESRS/VSME aligned, plain English
+══════════════════════════════════════════════════════════ */
+const CATEGORIES = [
+  {
+    id: 'climate', label: 'Climate & Energy', icon: '🌡️',
+    badge: 'badge-climate',
+    ref: 'ESRS E1 · VSME B3',
+    weights: [2, 1.5, 2, 2, 2, 1, 1, 1],
+    questions: [
+      'Do you know roughly how much energy your business uses — and have you ever tried to estimate the greenhouse gases this produces?',
+      'Have you looked beyond your own premises — for example at deliveries, business travel, or the suppliers you buy from — to understand where else your carbon footprint comes from?',
+      'Have you thought about how things like extreme weather, rising energy costs, or new environmental regulations could affect your business in the next few years?',
+      'Do you have any goals or a rough plan to reduce your energy use or carbon emissions — even if it\'s just a target to work towards?',
+      'Do you have a specific date or year by which you aim to reach net-zero or a defined carbon reduction target — even as an aspiration?',
+      'Have you actually changed anything — like switching to LED lighting, reducing business flights, or choosing a greener supplier — specifically to lower your environmental impact?',
+      'Do any of the energy sources you use — such as electricity, heating, or fuel — come from renewable or low-carbon providers?',
+      'Do you communicate your environmental goals or progress to your employees, customers, or suppliers — for example through your website, newsletters, or annual updates?'
+    ]
+  },
+  {
+    id: 'environment', label: 'Environment', icon: '🌿',
+    badge: 'badge-environment',
+    ref: 'ESRS E2 · E3 · E4 · E5 · VSME B4–B7',
+    weights: [1.5, 1.5, 1.5, 2, 1, 1, 1, 1],
+    questions: [
+      'Do you check whether any of the materials, chemicals, or products you buy could harm the environment — for example through pollution, toxic ingredients, or unsustainable sourcing?',
+      'Have you thought about the environmental impact of what your business sells or produces — from how it\'s made, to how a customer would eventually dispose of it?',
+      'Do you actively manage how much energy, water, and waste your premises produce — for example through regular checks, upgrades, or monitoring bills over time?',
+      'Do you keep track of how much waste your business produces, and have you taken any steps to cut it down — such as reducing packaging, recycling more, or reusing materials?',
+      'Do you know whether your business premises, operations, or supply chain are near any nature reserves, rivers, or protected habitats — and have you taken any steps to avoid harming them?',
+      'Do you try to design or source products and packaging so they last longer, can be repaired, or are made from recycled materials — rather than being single-use or sent straight to landfill?',
+      'Do you monitor how much water your business uses, and have you taken any steps to use less or to avoid polluting water sources nearby?',
+      'Have you had any environmental incidents — such as a spill, illegal waste disposal, or pollution complaint — and if so, did you report it and take action to prevent it happening again?'
+    ]
+  },
+  {
+    id: 'social', label: 'Your People & Workplace', icon: '🤝',
+    badge: 'badge-social',
+    ref: 'ESRS S1 · S3 · S4 · VSME B8–B10',
+    weights: [3, 1.5, 0.5, 0.5, 2, 1.5, 1.5, 1.5, 1.5, 2],
+    questions: [
+      'Do you have anything in place to protect your employees\' health and safety at work — like a written policy, regular risk checks, or a named person responsible for it?',
+      'Do you actively monitor employee wellbeing — for example through regular check-ins, absence tracking, or staff surveys — and use that information to make improvements?',
+      'Are your products or services described honestly and clearly to customers — including any known risks, limitations, or environmental impacts they should be aware of?',
+      'Does your business do anything to give back to the local community — such as hiring locally, supporting charities, volunteering, or partnering with local organisations?',
+      'Is there a safe and easy way for your employees or others to raise concerns about how your business behaves — for example a complaints process, an open-door policy, or an anonymous reporting line?',
+      'Do you regularly share information with your staff about how the business is doing — including any plans that could affect their jobs or working conditions?',
+      'Do you track any basic workforce data — such as how many people leave each year, the split between full-time and part-time staff, or the gender balance across your team?',
+      'Do you offer your employees any training, development opportunities, or support to help them grow their skills — beyond what is legally required?',
+      'Do you pay all your employees at least the real Living Wage, and do you review pay regularly to make sure it is fair across different groups of staff?',
+      'Do you monitor whether there are any pay gaps between different groups of employees — for example between men and women, or full-time and part-time staff — and take steps to address them?'
+    ]
+  },
+  {
+    id: 'supply', label: 'Supply Chain & Partners', icon: '🔗',
+    badge: 'badge-supply',
+    ref: 'ESRS S2 · VSME B11 · CSDDD',
+    weights: [2, 2.5, 2, 0.5, 1.5, 2, 1],
+    questions: [
+      'Do you have any process for checking whether your main suppliers treat their workers fairly — for example by reviewing their policies, asking them questions, or visiting their sites?',
+      'Have you ever checked whether any of your suppliers could be involved in serious issues like forced labour, child labour, or unsafe working conditions — even if only at a basic level?',
+      'Do your contracts or buying terms with suppliers include any requirements around ethical conduct, working conditions, or environmental standards?',
+      'Do you make any effort to buy from local businesses, small suppliers, or companies owned by people from underrepresented groups — rather than always going with the biggest or cheapest option?',
+      'When choosing new suppliers, do you look at their environmental and social track record — not just their price and quality?',
+      'Do you have a Modern Slavery statement or any policy that addresses the risk of forced labour, trafficking, or exploitation in your business or supply chain? (Note: legally required in the UK for businesses with annual turnover over £36 million; best practice for all)',
+      'Do you give smaller or local suppliers a fair chance to win your business — for example through open tendering, prompt payment, or reasonable contract terms?'
+    ]
+  },
+  {
+    id: 'governance', label: 'How You Run Your Business', icon: '💼',
+    badge: 'badge-governance',
+    ref: 'ESRS G1 · VSME B11 · UK/EU GDPR',
+    weights: [2, 2.5, 2, 1.5, 2, 1.5, 1.5, 1.5, 2, 2],
+    questions: [
+      'Does your business have written guidelines or a code of conduct that tells staff how to behave honestly and ethically — including how to handle gifts, conflicts of interest, or sensitive decisions?',
+      'Does your business have a clear rule — written down and communicated to staff — that says bribery and corrupt behaviour are never acceptable, no matter the circumstances?',
+      'Is there a specific person in your business — whether an owner, director, or manager — who is responsible for keeping an eye on sustainability risks and making sure something is done about them?',
+      'Do you share any information about your sustainability efforts publicly — for example on your website, in an annual review, or in a report you send to customers or investors?',
+      'Do you have basic data protection practices in place — such as knowing what personal data you hold, who can access it, and what you\'d do if there was a data breach?',
+      'Before introducing a new product, service, or way of working, do you think through any possible downsides — for example to people\'s health, jobs, privacy, or the environment?',
+      'Do you actively involve employees, customers, or community members in decisions that affect them — for example through surveys, meetings, or feedback channels?',
+      'Has your business had any serious ethical incidents in the past three years — such as a bribery case, regulatory fine, or major data breach — and if so, was it properly investigated and resolved?',
+      'Do you have a whistleblowing policy or a confidential way for employees to report wrongdoing without fear of losing their job or being treated unfairly?',
+      'If a customer, bank, or investor asked you to provide evidence of your ESG practices — such as policies, data, or certificates — could you respond promptly and confidently?'
+    ]
+  }
+];
+
+const OPTIONS = [
+  { val: 'yes',     label: '✓ Yes',     desc: 'Fully in place',   sel: 'sel-yes' },
+  { val: 'partial', label: '◑ Partial', desc: 'Work in progress', sel: 'sel-partial' },
+  { val: 'no',      label: '✗ No',      desc: 'Not yet started',  sel: 'sel-no' },
+  { val: 'na',      label: '— N/A',     desc: 'Not applicable',   sel: 'sel-na' }
+];
+const SCORES = { yes: 100, partial: 50, no: 0, na: null };
+const TOTAL_Q = CATEGORIES.reduce((a, c) => a + c.questions.length, 0);
+
+let answers = {}, notes = {}, currentCat = 0;
+
+/* ── Screens ───────────────────────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  updateProgress();
 }
 
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = store.get(ip) || { count: 0, reset: now + RATE_LIMIT_WINDOW };
-  if (now > entry.reset) {
-    entry.count = 0;
-    entry.reset = now + RATE_LIMIT_WINDOW;
-  }
-  if (entry.count >= MAX_REQUESTS) return false;
-  entry.count++;
-  store.set(ip, entry);
-  return true;
+function updateProgress() {
+  const done = Object.keys(answers).length;
+  const pct = Math.round(done / TOTAL_Q * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-info').textContent = done > 0 ? done + '/' + TOTAL_Q + ' answered' : '';
 }
 
-// Industry-specific guidance context for the prompt
-function getIndustryContext(industry) {
-  const ind = (industry || '').toLowerCase();
-  if (ind.includes('construct') || ind.includes('build') || ind.includes('civil')) {
-    return `Industry-specific context for Construction:
-- Key carbon sources: diesel plant/machinery, concrete, steel, aggregates, timber, transport
-- Relevant frameworks: PAS 2080 (carbon in buildings), BREEAM, Considerate Constructors Scheme
-- Supply chain priorities: Environmental Product Declarations (EPDs) for materials, sustainably sourced timber (FSC/PEFC), Modern Slavery in subcontractor chains
-- Site-level actions: skip hire waste tracking, fuel consumption logs, dust and noise records
-- Customer/tender requirements: ISO 14001, SSIP (H&S), PQQ/SQ ESG sections, net-zero supply chain clauses`;
-  }
-  if (ind.includes('retail') || ind.includes('food') || ind.includes('hospitality')) {
-    return `Industry-specific context for Retail/Food/Hospitality:
-- Key carbon sources: refrigeration, packaging, food waste, logistics, store energy
-- Relevant frameworks: Wrap (food waste), Courtauld Commitment, Sedex (supply chain)
-- Supply chain priorities: food provenance, packaging recyclability, supplier labour standards
-- Customer requirements: B Corp alignment, plastic reduction commitments, Fair Trade`;
-  }
-  if (ind.includes('manufactur') || ind.includes('engineering')) {
-    return `Industry-specific context for Manufacturing/Engineering:
-- Key carbon sources: process energy, raw materials, logistics, product end-of-life
-- Relevant frameworks: ISO 14001, ISO 50001 (energy), GHG Protocol product standard
-- Supply chain priorities: conflict minerals, EPDs, supplier carbon data
-- Customer requirements: REACH compliance, RoHS, supply chain due diligence`;
-  }
-  if (ind.includes('tech') || ind.includes('software') || ind.includes('digital') || ind.includes('it')) {
-    return `Industry-specific context for Technology/Software:
-- Key carbon sources: data centres, cloud computing, business travel, employee commuting
-- Relevant frameworks: GHG Protocol, Science Based Targets (SBTi)
-- Supply chain priorities: hardware supply chains, conflict minerals in devices
-- Customer requirements: ISO 27001 (data), supplier ESG questionnaires in enterprise sales`;
-  }
-  if (ind.includes('transport') || ind.includes('logistics') || ind.includes('fleet')) {
-    return `Industry-specific context for Transport/Logistics:
-- Key carbon sources: fleet fuel (Scope 1), contracted haulage (Scope 3)
-- Relevant frameworks: GLEC Framework, Clean Vehicle Directive
-- Supply chain priorities: subcontractor emissions, EV transition planning
-- Customer requirements: fleet carbon reporting, route optimisation evidence`;
-  }
-  // Default generic context
-  return `Focus recommendations on the specific gaps identified. Use plain English and name real free tools where helpful (e.g. GHG Protocol, ICO GDPR guide, gov.uk guidance).`;
+/* ── Assessment ────────────────────────────────────────── */
+function startAssessment() {
+  currentCat = 0;
+  renderCategory(0);
+  showScreen('assessment');
 }
 
-export default async function handler(req) {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      }
-    });
-  }
+function renderCategory(idx) {
+  currentCat = idx;
+  const cat = CATEGORIES[idx];
+  let offset = 0;
+  for (let i = 0; i < idx; i++) offset += CATEGORIES[i].questions.length;
 
-  if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
-  }
+  const answered = cat.questions.filter((_, qi) => !!answers[cat.id + '_' + qi]).length;
 
-  const ip = getIP(req);
-  if (!checkRateLimit(ip)) {
-    return new Response(
-      JSON.stringify({ error: 'rate_limited', message: 'You have reached the limit of 3 free AI recommendations per day. Please try again tomorrow.' }),
-      { status: 429, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+  let qHtml = cat.questions.map((q, qi) => {
+    const key = cat.id + '_' + qi;
+    const cur = answers[key] || '';
+    const note = notes[key] || '';
+    const optsHtml = OPTIONS.map(o =>
+      `<button class="opt ${cur === o.val ? o.sel : ''}" onclick="setAnswer('${key}','${o.val}',this,'${o.sel}')" aria-label="${o.label}">
+        <div>${o.label}</div><div class="opt-desc">${o.desc}</div>
+      </button>`
+    ).join('');
+    return `<div class="q-card ${cur ? 'answered' : ''}" id="qc-${key}">
+      <div class="q-num">Q${offset + qi + 1} of ${TOTAL_Q}</div>
+      <div class="q-text">${q}</div>
+      <div class="opts">${optsHtml}</div>
+      <div class="q-note">
+        <textarea placeholder="Add a note or evidence (optional)" oninput="notes['${key}']=this.value">${note}</textarea>
+      </div>
+    </div>`;
+  }).join('');
 
-  let body;
+  const dots = CATEGORIES.map((c, i) =>
+    `<button class="dot ${i === idx ? 'active' : i < idx ? 'done' : ''}" onclick="goToCat(${i})" title="${c.label}" aria-label="Go to ${c.label}"></button>`
+  ).join('');
+
+  const isLast = idx === CATEGORIES.length - 1;
+
+  document.getElementById('assessment-container').innerHTML = `
+    <div class="section-hdr">
+      <span class="section-badge ${cat.badge}">${cat.icon} ${cat.label}</span>
+      <span class="section-count" id="cat-count">${answered}/${cat.questions.length} answered</span>
+    </div>
+    ${qHtml}
+    <div class="nav-btns">
+      <div>
+        ${idx > 0
+          ? `<button class="btn-secondary" onclick="goToCat(${idx - 1})">← ${CATEGORIES[idx - 1].label}</button>`
+          : `<button class="btn-secondary" onclick="showScreen('company')">← Company info</button>`}
+      </div>
+      <div class="step-dots" role="navigation" aria-label="Assessment progress">${dots}</div>
+      <div>
+        ${isLast
+          ? `<button class="btn-primary" onclick="showScreen('gate')">See my results →</button>`
+          : `<button class="btn-primary" onclick="goToCat(${idx + 1})">${CATEGORIES[idx + 1].label} →</button>`}
+      </div>
+    </div>`;
+
+  updateProgress();
+}
+
+function setAnswer(key, val, btn, selClass) {
+  answers[key] = val;
+  const card = document.getElementById('qc-' + key);
+  card.querySelectorAll('.opt').forEach(b => { b.className = 'opt'; });
+  btn.classList.add(selClass);
+  card.classList.add('answered');
+  const cat = CATEGORIES[currentCat];
+  const done = cat.questions.filter((_, qi) => !!answers[cat.id + '_' + qi]).length;
+  const el = document.getElementById('cat-count');
+  if (el) el.textContent = done + '/' + cat.questions.length + ' answered';
+  updateProgress();
+}
+
+function goToCat(idx) {
+  currentCat = idx;
+  renderCategory(idx);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── Email Gate ────────────────────────────────────────── */
+
+async function saveToBrevo(name, email) {
   try {
-    body = await req.json();
-  } catch {
-    return new Response('Invalid JSON', { status: 400 });
-  }
+    await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name })
+    });
+  } catch (e) { /* silent fail */ }
+}
 
-  const { co, industry, size, overall, catSummary, gapList, partialList } = body;
-  const industryContext = getIndustryContext(industry);
+/* ── Scoring ───────────────────────────────────────────── */
+function catScore(cat) {
+  let sum = 0, totalWeight = 0;
+  const weights = cat.weights || cat.questions.map(() => 1);
+  cat.questions.forEach((_, qi) => {
+    const s = SCORES[answers[cat.id + '_' + qi]];
+    const w = weights[qi] || 1;
+    if (s !== null && s !== undefined) {
+      sum += s * w;
+      totalWeight += w;
+    }
+  });
+  return totalWeight > 0 ? Math.round(sum / totalWeight) : null;
+}
+
+function getGrade(s) {
+  if (s === null) return { label: 'Not assessed', color: 'var(--faint)' };
+  if (s >= 80) return { label: 'Leading', color: '#0f6e56' };
+  if (s >= 60) return { label: 'Progressing', color: '#1d9e75' };
+  if (s >= 40) return { label: 'Developing', color: '#ba7517' };
+  if (s >= 20) return { label: 'Starting out', color: '#993c1d' };
+  return { label: 'Needs action', color: '#a32d2d' };
+}
+
+function scoreColor(s) {
+  if (s === null) return 'var(--faint)';
+  if (s >= 80) return '#0f6e56';
+  if (s >= 60) return '#1d9e75';
+  if (s >= 40) return '#ba7517';
+  if (s >= 20) return '#993c1d';
+  return '#a32d2d';
+}
+
+/* ── Results ───────────────────────────────────────────── */
+function buildResults(visitorName, visitorEmail) {
+  const co = document.getElementById('co-name').value || 'Your Company';
+  const industry = document.getElementById('co-industry').value || '';
+  const size = document.getElementById('co-size').value || 'Not disclosed';
+  const coDate = document.getElementById('co-date').value || new Date().toISOString().split('T')[0];
+
+  const catScores = CATEGORIES.map(c => ({ cat: c, score: catScore(c) }));
+  const valid = catScores.filter(x => x.score !== null).map(x => x.score);
+  const overall = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0;
+  const grade = getGrade(overall);
+  const totalQs2 = CATEGORIES.reduce((a,c2) => a+c2.questions.length, 0);
+  const answeredQs2 = Object.keys(answers).filter(k => answers[k]).length;
+  const completionPct2 = Math.round(answeredQs2/totalQs2*100);
+  const isPreliminary2 = completionPct2 < 70;
+  const rc = scoreColor(overall);
+
+  let gaps = [], partials = [], goods = [];
+  CATEGORIES.forEach(cat => {
+    cat.questions.forEach((q, qi) => {
+      const v = answers[cat.id + '_' + qi];
+      const n = notes[cat.id + '_' + qi] || '';
+      if (v === 'no') gaps.push({ cat: cat.label, q, note: n });
+      else if (v === 'partial') partials.push({ cat: cat.label, q, note: n });
+      else if (v === 'yes') goods.push({ cat: cat.label, q });
+    });
+  });
+
+  const R = 62, circ = 2 * Math.PI * R;
+  const offset = circ - (circ * overall / 100);
+
+  // Category cards
+  const catCards = catScores.map(({ cat, score }) => {
+    const g = getGrade(score);
+    const col = scoreColor(score);
+    const pct = score === null ? 0 : score;
+    return `<div class="rc">
+      <div class="rc-icon">${cat.icon}</div>
+      <div class="rc-name">${cat.label}</div>
+      <div class="rc-score" style="color:${col}">${score === null ? '—' : score + '%'}</div>
+      <div class="rc-grade" style="color:${col}">${g.label}</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div>
+    </div>`;
+  }).join('');
+
+  // Findings
+  const findHtml = [
+    ...gaps.slice(0, 4).map(x => `<div class="finding-item">
+      <div class="fdot fdot-gap"></div>
+      <div><div class="finding-cat">${x.cat}</div><div class="finding-q">${x.q}</div>${x.note ? `<div class="finding-note">Note: ${x.note}</div>` : ''}</div>
+    </div>`),
+    ...partials.slice(0, 3).map(x => `<div class="finding-item">
+      <div class="fdot fdot-partial"></div>
+      <div><div class="finding-cat">${x.cat}</div><div class="finding-q">${x.q}</div></div>
+    </div>`)
+  ].join('');
+
+  // Action plan
+  const actions = [...gaps.slice(0, 5).map(x => ({ p: 'high', ...x })), ...partials.slice(0, 4).map(x => ({ p: 'medium', ...x }))].slice(0, 7);
+  const actHtml = actions.map(a => `<div class="action-row">
+    <span class="ptag ${a.p === 'high' ? 'p-high' : 'p-med'}">${a.p}</span>
+    <div><div class="action-cat">${a.cat}</div><div class="action-q">${a.q}</div></div>
+  </div>`).join('');
+
+  document.getElementById('results-container').innerHTML = `
+    ${isPreliminary2 ? `<div style="background:#fef3e2;border:2px solid #e09900;border-radius:.75rem;padding:12px 16px;margin-bottom:1.25rem;font-size:.875rem;color:#7a4f00;line-height:1.5"><strong>⚠️ Preliminary score</strong> — You answered ${answeredQs2} of ${totalQs2} questions (${completionPct2}% complete). For a more accurate result, go back and complete the remaining questions before generating your PDF report.</div>` : ''}
+    <div class="results-hero">
+      <div class="co-label">${co}${coDate ? ' · ' + coDate : ''}</div>
+      <h1>Your ESG Assessment Results</h1>
+      <div class="ring-wrap">
+        <svg width="148" height="148" viewBox="0 0 148 148">
+          <circle cx="74" cy="74" r="${R}" fill="none" stroke="var(--off)" stroke-width="10"/>
+          <circle cx="74" cy="74" r="${R}" fill="none" stroke="${rc}" stroke-width="10"
+            stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}" stroke-linecap="round"/>
+        </svg>
+        <div class="ring-center">
+          <div><div class="ring-score" style="color:${rc}">${overall}</div><div class="ring-lbl">Overall score</div></div>
+        </div>
+      </div>
+      <div class="ring-grade" style="color:${rc}">${grade.label}</div>
+      <p class="score-summary">
+        You identified <strong style="color:var(--err)">${gaps.length} gaps</strong>,
+        <strong style="color:var(--warn)">${partials.length} areas in progress</strong>, and
+        <strong style="color:var(--p)">${goods.length} areas already in good shape</strong>.
+      </p>
+    </div>
+
+    <div class="container">
+      <div class="cat-results-grid">${catCards}</div>
+
+      ${findHtml ? `<div class="findings"><h2>Key findings</h2>${findHtml}</div>` : ''}
+
+      ${actHtml ? `<div class="actions-box">
+        <h2>Prioritised action plan</h2>
+        <p class="sub">High priority = gaps with nothing currently in place. Tackle these first.</p>
+        ${actHtml}
+      </div>` : ''}
+
+      <div class="ai-box" id="ai-box">
+        <div class="ai-hdr">✦ AI-powered recommendations</div>
+        <div class="ai-content ai-loading" id="ai-content">
+          <span class="ai-spinner"></span>Generating personalised recommendations for ${co}…
+        </div>
+      </div>
+
+      
+
+      <div class="upgrade-box" id="upgrade-box" style="text-align:center;padding:1.5rem;background:var(--surf);border:2px solid var(--p);border-radius:var(--r-xl);margin:2rem 0;box-shadow:var(--sh-md)">
+        <h2 style="font-size:1.1875rem;font-weight:700;margin-bottom:.5rem">Want a full branded PDF report?</h2>
+        <p style="color:var(--muted);font-size:.9375rem;margin-bottom:1rem;max-width:44ch;margin-inline:auto">8-page branded report with AI narrative, action plan, and ESRS alignment — ready to share with stakeholders.</p>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem;margin-bottom:1.25rem">
+          <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">&#x2713; Branded PDF</span>
+          <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">&#x2713; ESRS/VSME aligned</span>
+          <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">&#x2713; AI narrative</span>
+          <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.8125rem;font-weight:500;padding:.375rem .75rem;background:var(--plight);border-radius:999px;color:var(--ph)">&#x2713; Instant download</span>
+        </div>
+        <button id="stripe-pay-btn" onclick="startCheckout('${visitorEmail}')" style="display:inline-flex;align-items:center;gap:.625rem;padding:.875rem 2rem;border-radius:999px;background:#635bff;color:#fff;font-weight:700;font-size:1rem;border:none;cursor:pointer;min-height:52px">
+          &#x1F4C4; Get full PDF report &mdash; &pound;19
+        </button>
+        <p id="checkout-err" style="display:none;font-size:.75rem;color:var(--err);margin-top:.5rem"></p>
+        <p style="font-size:.75rem;color:var(--faint);margin-top:.75rem">Secure payment via Stripe &middot; Apple Pay, Google Pay, Klarna accepted</p>
+      </div>
+
+      <button class="btn-primary" id="pdf-btn" onclick="generatePDF()" style="display:none;margin:0 auto 1rem;justify-content:center">&#x1F4C4; Download PDF Report</button>
+
+      <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin:1rem 0">
+        <button class="btn-secondary" onclick="exportCSV()">&#x2B07;&#xFE0F; Export CSV</button>
+        <button class="btn-secondary" onclick="restartAll()">&#x21BA; Start over</button>
+      </div>
+
+      <p class="legal-note">Aligned with ESRS Set 1 (EU 2023/2772) and EFRAG VSME Standard (December 2024) · All data stays in your browser</p>
+    </div>`;
+
+  showScreen('results');
+  callAI(co, industry, size, overall, catScores, gaps, partials);
+
+}
+
+/* ── AI Recommendations ────────────────────────────────── */
+function formatAI(text) {
+  var t = text
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+  t = t.replace(/^### (.+)$/mg,'<b style="display:block;margin-top:.75rem;color:var(--tx)">$1</b>');
+  t = t.replace(/^## (.+)$/mg,'<b style="display:block;margin-top:1rem;font-size:.9375rem;color:var(--p)">$1</b>');
+  t = t.replace(/^# (.+)$/mg,'<b style="display:block;margin-bottom:.5rem;font-size:1rem">$1</b>');
+  t = t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  t = t.replace(/^(\d+)\. /mg,'<br><b style="color:var(--p)">$1.</b> ');
+  t = t.replace(/^[-*] /mg,'<br>&#x2022; ');
+  t = t.replace(/^\? /mg,'<br>&#x2022; ');
+  t = t.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  return t;
+}
+
+async function callAI(co, industry, size, overall, catScores, gaps, partials) {
+  const catSummary = catScores.map(({ cat, score }) =>
+    `${cat.label}: ${score === null ? 'not assessed' : score + '%'}`
+  ).join(', ');
+
+  const gapList = gaps.slice(0, 6).map(x =>
+    `- [${x.cat}] ${x.q}${x.note ? ' (note: ' + x.note + ')' : ''}`
+  ).join('\n');
+
+  const partialList = partials.slice(0, 4).map(x =>
+    `- [${x.cat}] ${x.q}`
+  ).join('\n');
 
   const prompt = `You are a plain-speaking ESG consultant helping a small or medium business improve its sustainability.
 
@@ -112,76 +775,1772 @@ ${gapList || 'None identified'}
 In progress (answered Partial):
 ${partialList || 'None identified'}
 
-${industryContext}
+Write a short, practical improvement plan using plain English — no jargon. Three sections:
 
-The category scores above show where this business is weakest. Focus your recommendations on the lowest-scoring categories first — not just on climate or environment if those are not the weakest areas.
+1. Quick wins (next 1–3 months)
+2–3 specific, concrete actions that target their actual gaps. Name real tools or frameworks if helpful (e.g. GHG Protocol, ISO 14001).
 
-Write a short, practical improvement plan. Three sections:
+2. Bigger priorities (next 6–12 months)
+2–3 medium-term actions. Keep them realistic for a ${size || 'small'} business in ${industry || 'their sector'}.
 
-## Quick wins (next 1–3 months)
-2–3 specific, concrete actions targeting their actual gaps. Prioritise actions in the lowest-scoring category. Use industry-specific tools, frameworks or terminology where relevant. Do NOT suggest vague actions — be specific to their industry and gaps.
+3. Where they stand
+1–2 sentences of honest context: what do organisations with stronger ESG performance typically do differently — and what is the most practical first step for a ${size || 'small'} ${industry || 'business'} at this score?
 
-## Bigger priorities (next 6–12 months)
-2–3 medium-term actions realistic for a ${size || 'small'} business in ${industry || 'their sector'}.
+Keep the whole response under 200 words. Be direct and encouraging — not preachy.`;
 
-## What mature ESG programmes typically include
-1–2 sentences describing practices commonly seen in organisations with well-developed ESG programmes in this sector — framed as observable practices, not invented statistics.
-
-RULES:
-- Do not invent benchmark scores, sector averages, or percentage comparisons
-- Do not suggest specific year targets (e.g. "net zero by 2040") — suggest "set a measurable target" instead
-- Do not use phrases like "top performers", "industry leaders", "sector average"
-- Be specific to the industry — generic advice is less useful than sector-specific guidance
-- Prioritise the lowest-scoring category — if Supply Chain scores 43%, include at least one specific supply chain action
-- Do not default to climate/environment if other categories score lower
-- Use a GRADUATED approach to maturity: start with basic foundations (e.g. supplier code of conduct, ESG questionnaire) before suggesting advanced standards (EPDs, PAS 2080, ISO 14001)
-- For construction firms at <50%: start with supplier code of conduct and basic screening; suggest EPDs and PAS 2080 only as medium-term priorities
-- For PAS 2080: say "use PAS 2080 principles" not specific section numbers — too technical for small firms
-- Suggest concrete KPIs where helpful: e.g. "aim to screen 80% of suppliers by spend" or "target 15% diesel reduction on site"
-- Keep under 280 words. Be direct, practical, encouraging.
-- MANDATORY COVERAGE: For every category with score < 50%, generate at least 1 specific recommendation.
-  Categories below 50% must each appear in Quick wins or Bigger priorities.
-- MANDATORY COVERAGE: For categories between 50-59%, include at least 1 recommendation in Bigger priorities.
-- Do NOT focus only on supply chain and carbon if other gaps exist (e.g. lifecycle impact, biodiversity, customer transparency, workforce monitoring).
-- Spread recommendations across ALL gap areas, not just the lowest scoring category.`;
-
+  const el = document.getElementById('ai-content');
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/recommend', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 650,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ co, industry, size, overall, catSummary, gapList, partialList })
     });
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Anthropic error:', err);
-      return new Response(
-        JSON.stringify({ error: 'api_error', message: 'AI service temporarily unavailable.' }),
-        { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-      );
-    }
-
-    const data = await response.json();
-    const text = data.content?.find(b => b.type === 'text')?.text || '';
-
-    return new Response(
-      JSON.stringify({ text }),
-      { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-    );
-
-  } catch (err) {
-    console.error('Handler error:', err);
-    return new Response(
-      JSON.stringify({ error: 'server_error', message: 'Something went wrong.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-    );
+    const data = await res.json();
+    if (!el) return;
+    if (res.status === 429) { el.classList.remove('ai-loading'); el.textContent = data.message || 'Daily AI limit reached. Try again tomorrow.'; return; }
+    if (!res.ok || data.error) { el.classList.remove('ai-loading'); el.textContent = 'AI recommendations temporarily unavailable.'; return; }
+    el.classList.remove('ai-loading');
+    el.innerHTML = formatAI(data.text || 'Unable to generate recommendations.');
+  } catch (e) {
+    if (el) { el.classList.remove('ai-loading'); el.textContent = 'AI recommendations temporarily unavailable.'; }
   }
 }
+
+/* ── Export ────────────────────────────────────────────── */
+function exportCSV() {
+  let csv = 'Category,Question,Answer,Note\n';
+  CATEGORIES.forEach(cat => {
+    cat.questions.forEach((q, qi) => {
+      const v = answers[cat.id + '_' + qi] || '';
+      const n = (notes[cat.id + '_' + qi] || '').replace(/"/g, '""');
+      csv += `"${cat.label}","${q.replace(/"/g, '""')}","${v}","${n}"\n`;
+    });
+  });
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  const co = document.getElementById('co-name').value || 'company';
+  a.download = co.replace(/\s+/g, '-').toLowerCase() + '-esg-assessment.csv';
+  a.click();
+}
+
+function restartAll() {
+  answers = {}; notes = {}; currentCat = 0;
+  document.getElementById('gate-name').value = '';
+  document.getElementById('gate-email').value = '';
+  document.getElementById('gate-gdpr').checked = false;
+  showScreen('welcome');
+}
+
+/* ── Theme ─────────────────────────────────────────────── */(function () {
+  if (matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+
+// Set today's date
+document.getElementById('co-date').value = new Date().toISOString().split('T')[0];
+
+// DEV SHORTCUT: Ctrl+Shift+D — fills test data, skips paywall, shows results
+// Remove this block before going fully live if desired (harmless to leave in)
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+    // Fill company info
+    document.getElementById('co-name').value = 'Test Company Ltd';
+    document.getElementById('co-industry').value = 'Construction';
+    document.getElementById('co-size').value = '50-249';
+    // Fill all answers with a mix
+    var testAnswers = ['yes','partial','no','na','yes','partial','no','yes','partial','no'];
+    CATEGORIES.forEach(function(cat) {
+      cat.questions.forEach(function(q, qi) {
+        var v = testAnswers[(qi + cat.questions.length) % testAnswers.length];
+        answers[cat.id+'_'+qi] = v;
+      });
+    });
+    // Unlock PDF + show results
+    _pdfUnlocked = true;
+    buildResults('Dev', 'dev@test.com');
+    // After buildResults renders, swap paywall for download button
+    setTimeout(function() {
+      var upgradeBox = document.getElementById('upgrade-box');
+      if (upgradeBox) {
+        upgradeBox.style.display = 'none';
+      }
+      var pdfBtn = document.getElementById('pdf-btn');
+      if (pdfBtn) {
+        pdfBtn.style.display = 'inline-flex';
+      }
+      console.log('DEV MODE: paywall hidden, PDF button shown');
+    }, 50);
+  }
+});
+
+
+/* ── GDPR Toggle ──────────────────────────────────────────── */
+let _gdprOn = false;
+
+function toggleGDPR(e) {
+  if (e && e.target && e.target.tagName === 'A') return;
+  _gdprOn = !_gdprOn;
+  document.getElementById('gate-gdpr').checked = _gdprOn;
+  var row = document.getElementById('gdpr-row');
+  var box = document.getElementById('custom-check-box');
+  var tick = document.getElementById('check-tick');
+  if (_gdprOn) {
+    row.style.borderColor = '#1d9e75'; row.style.background = '#e1f5ee';
+    box.style.background = '#1d9e75'; box.style.borderColor = '#1d9e75';
+    tick.style.display = 'block';
+  } else {
+    row.style.borderColor = '#ccc'; row.style.background = '#f9f9f9';
+    box.style.background = '#ffffff'; box.style.borderColor = '#888';
+    tick.style.display = 'none';
+  }
+}
+
+/* ── Email Gate ───────────────────────────────────────────── */
+function submitGate() {
+  var name = document.getElementById('gate-name').value.trim();
+  var email = document.getElementById('gate-email').value.trim();
+  var errEl = document.getElementById('gate-err');
+  if (!name || !email || !email.includes('@')) {
+    errEl.textContent = 'Please enter your name and a valid email address.';
+    errEl.style.display = 'block'; return;
+  }
+  if (!_gdprOn) {
+    errEl.textContent = 'Please tick the consent box to continue.';
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+  saveToBrevo(name, email);
+  buildResults(name, email);
+}
+
+/* ── Stripe Paywall ───────────────────────────────────────── */
+let _pdfUnlocked = false;
+
+function checkStripeReturn() {
+  var params = new URLSearchParams(window.location.search);
+  var sessionId = params.get('session_id');
+  if (!sessionId || !sessionId.startsWith('cs_')) return;
+  window.history.replaceState({}, '', window.location.pathname);
+  try {
+    var savedAnswers = localStorage.getItem('esg_answers');
+    var savedNotes = localStorage.getItem('esg_notes');
+    if (savedAnswers) answers = JSON.parse(savedAnswers);
+    if (savedNotes) notes = JSON.parse(savedNotes);
+    var coName = localStorage.getItem('esg_co') || '';
+    var coIndustry = localStorage.getItem('esg_industry') || '';
+    var coSize = localStorage.getItem('esg_size') || '';
+    var coDate = localStorage.getItem('esg_date') || '';
+    var gateName = localStorage.getItem('esg_gate_name') || '';
+    var gateEmail = localStorage.getItem('esg_gate_email') || '';
+    if (document.getElementById('co-name')) document.getElementById('co-name').value = coName;
+    if (document.getElementById('co-industry')) document.getElementById('co-industry').value = coIndustry;
+    if (document.getElementById('co-size')) document.getElementById('co-size').value = coSize;
+    if (document.getElementById('co-date')) document.getElementById('co-date').value = coDate;
+    if (Object.keys(answers).length > 0) {
+      buildResults(gateName, gateEmail);
+      // Verify immediately — don't store in sessionStorage
+      verifySessionAndUnlock(sessionId);
+    } else {
+      // No answers — show quick download screen and verify
+      showPaymentSuccessBanner(sessionId);
+    }
+  } catch(e) {
+    showPaymentSuccessBanner(sessionId);
+  }
+}
+checkStripeReturn();
+
+function showPaymentSuccessBanner(sessionId) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('screen-results').classList.add('active');
+  var container = document.getElementById('results-container');
+  container.innerHTML = '<div style="max-width:560px;margin:0 auto;padding:3rem 1.25rem;text-align:center">' +
+    '<div style="font-size:3.5rem;margin-bottom:1rem">&#x2705;</div>' +
+    '<h1 style="font-size:1.5rem;font-weight:600;margin-bottom:.75rem">Payment confirmed!</h1>' +
+    '<p style="color:var(--muted);margin-bottom:2rem;font-size:.9375rem">Your PDF report is generating…</p>' +
+    '<button id="pdf-btn" class="btn-primary" style="width:100%;justify-content:center;font-size:1rem;margin-bottom:1rem" onclick="generatePDF()">&#x1F4C4; Download my PDF report</button>' +
+    '<p style="font-size:.8125rem;color:var(--muted)">Or <a href="#" onclick="restartAll();return false" style="color:var(--p)">complete the full assessment</a> for a personalised report with your scores.</p>' +
+    '</div>';
+  if (sessionId) {
+    verifySessionAndUnlock(sessionId);
+  }
+}
+
+
+async function startCheckout(email) {
+  var btn = document.getElementById('stripe-pay-btn');
+  var errEl = document.getElementById('checkout-err');
+  if (btn) { btn.textContent = 'Opening checkout...'; btn.disabled = true; }
+  if (errEl) errEl.style.display = 'none';
+  try {
+    localStorage.setItem('esg_answers', JSON.stringify(answers));
+    localStorage.setItem('esg_notes', JSON.stringify(notes));
+    localStorage.setItem('esg_co', document.getElementById('co-name').value || '');
+    localStorage.setItem('esg_industry', document.getElementById('co-industry').value || '');
+    localStorage.setItem('esg_size', document.getElementById('co-size').value || '');
+    localStorage.setItem('esg_date', document.getElementById('co-date').value || '');
+    localStorage.setItem('esg_gate_name', document.getElementById('gate-name') ? document.getElementById('gate-name').value : '');
+    localStorage.setItem('esg_gate_email', email || '');
+  } catch(e) {}
+  try {
+    var res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email || '' })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.url) {
+      if (errEl) { errEl.textContent = 'Could not open checkout. Please try again.'; errEl.style.display = 'block'; }
+      if (btn) { btn.textContent = 'Get full PDF report \u2014 \u00a319'; btn.disabled = false; }
+      return;
+    }
+    window.location.href = data.url;
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Connection error. Please try again.'; errEl.style.display = 'block'; }
+    if (btn) { btn.textContent = 'Get full PDF report \u2014 \u00a319'; btn.disabled = false; }
+  }
+}
+
+async function verifySessionAndUnlock(sessionId) {
+  try {
+    var res = await fetch('/api/stripe-verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: sessionId })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.valid) {
+      console.warn('Verify failed:', data.error);
+      return;
+    }
+    _pdfUnlocked = true;
+    sessionStorage.removeItem('pending_session_id');
+    var upgradeBox = document.getElementById('upgrade-box');
+    if (upgradeBox) {
+      upgradeBox.innerHTML = '<div style="text-align:center;padding:.5rem 0"><div style="font-size:2rem;margin-bottom:.75rem">&#x2705;</div><h2 style="margin-bottom:.5rem">Payment verified!</h2><p style="margin-bottom:1.5rem">Your PDF report is ready. Click below to download.</p></div>';
+    }
+    var pdfBtn = document.getElementById('pdf-btn');
+    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+  } catch(e) { console.error('verifySessionAndUnlock error:', e); }
+}
+
+/* ── PDF Download Button ─────────────────────────────────── */
+
+/* ── Theme ───────────────────────────────────────────────── */
+function toggleTheme() {
+  var root = document.documentElement;
+  var cur = root.getAttribute('data-theme');
+  root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+}
+(function() {
+  if (matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+
+document.getElementById('co-date').value = new Date().toISOString().split('T')[0];
+
+// DEV SHORTCUT: Ctrl+Shift+D — fills test data, skips paywall, shows results
+// Remove this block before going fully live if desired (harmless to leave in)
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+    // Fill company info
+    document.getElementById('co-name').value = 'Test Company Ltd';
+    document.getElementById('co-industry').value = 'Construction';
+    document.getElementById('co-size').value = '50-249';
+    // Fill all answers with a mix
+    var testAnswers = ['yes','partial','no','na','yes','partial','no','yes','partial','no'];
+    CATEGORIES.forEach(function(cat) {
+      cat.questions.forEach(function(q, qi) {
+        var v = testAnswers[(qi + cat.questions.length) % testAnswers.length];
+        answers[cat.id+'_'+qi] = v;
+      });
+    });
+    // Unlock PDF + show results
+    _pdfUnlocked = true;
+    buildResults('Dev', 'dev@test.com');
+    // After buildResults renders, swap paywall for download button
+    setTimeout(function() {
+      var upgradeBox = document.getElementById('upgrade-box');
+      if (upgradeBox) {
+        upgradeBox.style.display = 'none';
+      }
+      var pdfBtn = document.getElementById('pdf-btn');
+      if (pdfBtn) {
+        pdfBtn.style.display = 'inline-flex';
+      }
+      console.log('DEV MODE: paywall hidden, PDF button shown');
+    }, 50);
+  }
+});
+
+/* ── PDF Generation ──────────────────────────────────────── */
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+function getBusinessImpact(score, industry) {
+  var ind = (industry||'').replace(/[^\x00-\xFF]/g,'?').toLowerCase();
+  var isConstruct = ind.indexOf('construct') > -1 || ind.indexOf('build') > -1 || ind.indexOf('civil') > -1;
+  var items = [];
+  if (score >= 60) {
+    items.push('+ You are likely to satisfy most basic customer ESG questionnaires');
+    items.push('+ You can demonstrate ESG awareness to banks and investors');
+    if (isConstruct) items.push('+ You are positioned to respond to standard PQQ sustainability sections');
+  } else if (score >= 40) {
+    items.push('+ You are likely to satisfy many basic ESG questionnaire requirements');
+    items.push('+ You can demonstrate foundational ESG practices to customers');
+    if (isConstruct) {
+      items.push('- Some Tier 1 contractor supply chain audits may identify gaps');
+      items.push('- Public sector frameworks may require higher evidence levels');
+    }
+    items.push('- Access to green finance typically requires a documented emissions baseline');
+  } else {
+    items.push('- Significant gaps may affect responses to customer ESG questionnaires');
+    items.push('- ESG requirements from banks and larger customers will be difficult to meet');
+    if (isConstruct) items.push('- Most PQQ sustainability sections will require improvement');
+    items.push('+ Quick wins are available — most require time, not budget');
+  }
+  if (score < 70) {
+    items.push('- CSRD-reporting customers are likely to request your Scope 3 data');
+  }
+  return items;
+}
+
+function generatePDF() {
+  if (!_pdfUnlocked) { alert('Please verify your payment first.'); return; }
+  var btn = document.getElementById('pdf-btn');
+  if (btn) { btn.textContent = 'Generating PDF...'; btn.disabled = true; }
+
+  setTimeout(function() {
+    try {
+      var jsPDF = window.jspdf.jsPDF;
+      var doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      var W = 210, H = 297, M = 16; // page width, height, margin
+
+      // ── Collect data ─────────────────────────────────────
+      var co      = (document.getElementById('co-name')     && document.getElementById('co-name').value)     || 'Your Company';
+      var industry= (document.getElementById('co-industry') && document.getElementById('co-industry').value) || 'Not disclosed';
+      var size    = (document.getElementById('co-size')     && document.getElementById('co-size').value)     || 'Not specified';
+      var coDate  = (document.getElementById('co-date')     && document.getElementById('co-date').value)     || new Date().toISOString().split('T')[0];
+
+      var catScoresArr = CATEGORIES.map(function(c2){ return { cat: c2, score: catScore(c2) }; });
+      var validScores  = catScoresArr.filter(function(x){ return x.score !== null; }).map(function(x){ return x.score; });
+      var overall      = validScores.length ? Math.round(validScores.reduce(function(a,b){return a+b;},0)/validScores.length) : 0;
+      var grade        = getGrade(overall);
+      var gc           = scoreColor(overall);
+      var gcArr        = hexToRgb(gc);
+
+      // Completion metrics
+      var totalQs = CATEGORIES.reduce(function(a,c2){ return a+c2.questions.length; }, 0);
+      var answeredQs = Object.keys(answers).filter(function(k){
+        return answers[k] && answers[k] !== '';
+      }).length;
+      var completionPct = Math.round(answeredQs / totalQs * 100);
+      var confidenceLabel = completionPct >= 80 ? 'High' : completionPct >= 50 ? 'Medium' : completionPct >= 30 ? 'Low' : 'Very Low';
+      var confidenceCol = completionPct >= 80 ? [15,110,86] : completionPct >= 50 ? [186,117,23] : completionPct >= 30 ? [153,60,29] : [163,45,45];
+      var isPreliminary = completionPct < 70;
+
+      // Per-category completion
+      function catCompletion(cat) {
+        var ans = cat.questions.filter(function(q,qi){ return !!answers[cat.id+'_'+qi]; }).length;
+        return { answered: ans, total: cat.questions.length, pct: Math.round(ans/cat.questions.length*100) };
+      }
+
+      // Questions where "No" is a POSITIVE answer (no incidents = good)
+      var reverseScored = [
+        /serious ethical incidents/i,
+        /environmental incidents/i,
+      ];
+      function isReverse(q) {
+        for (var r=0; r<reverseScored.length; r++) {
+          if (reverseScored[r].test(safe(q))) return true;
+        }
+        return false;
+      }
+
+      var gaps=[], partials=[], goods=[];
+      CATEGORIES.forEach(function(cat) {
+        cat.questions.forEach(function(q,qi) {
+          var v = answers[cat.id+'_'+qi];
+          var n = notes[cat.id+'_'+qi] || '';
+          var rev = isReverse(q);
+          if (rev) {
+            // Reverse-scored: No=good, Yes=needs attention
+            if (v==='no') goods.push({cat:cat.label, q:q, id:cat.id, note:'No incidents reported'});
+            else if (v==='yes') gaps.push({cat:cat.label, q:q, note:'Incident reported — ensure it was investigated and resolved', id:cat.id});
+            else if (v==='partial') partials.push({cat:cat.label, q:q, note:n, id:cat.id});
+          } else {
+            if (v==='no')      gaps.push({cat:cat.label, q:q, note:n, id:cat.id});
+            else if (v==='partial') partials.push({cat:cat.label, q:q, note:n, id:cat.id});
+            else if (v==='yes')    goods.push({cat:cat.label, q:q, id:cat.id});
+          }
+        });
+      });
+
+      // ── Helpers ───────────────────────────────────────────
+      function hexToRgb(hex) {
+        // handle CSS vars or hex
+        if (!hex || hex.indexOf('#') === -1) return [92,90,85];
+        var r = parseInt(hex.slice(1,3),16);
+        var g = parseInt(hex.slice(3,5),16);
+        var b = parseInt(hex.slice(5,7),16);
+        return [r,g,b];
+      }
+      function scoreColorArr(s) {
+        if (s === null) return [160,158,150];
+        if (s >= 80) return [15,110,86];
+        if (s >= 60) return [29,158,117];
+        if (s >= 40) return [186,117,23];
+        if (s >= 20) return [153,60,29];
+        return [163,45,45];
+      }
+      function gradeLabel(s) {
+        if (s === null) return 'Not assessed';
+        if (s >= 80) return 'Leading';
+        if (s >= 60) return 'Progressing';
+        if (s >= 40) return 'Developing';
+        if (s >= 20) return 'Starting out';
+        return 'Needs action';
+      }
+      function catIcon(id) {
+        var icons = { climate:'[E1]', environment:'[E2-E5]', social:'[S1]', supply:'[S2]', governance:'[G1]' };
+        return icons[id] || '';
+      }
+      function safe(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/\u2014/g, '-').replace(/\u2013/g, '-')
+          .replace(/\u2018/g, "'").replace(/\u2019/g, "'")
+          .replace(/\u201C/g, '"').replace(/\u201D/g, '"')
+          .replace(/[^\x00-\xFF]/g, '?');
+      }
+      function wrapText(text, x, y, maxW, lineH, maxLines) {
+        var lines = doc.splitTextToSize(safe(text), maxW);
+        if (maxLines) lines = lines.slice(0, maxLines);
+        lines.forEach(function(l){ doc.text(l, x, y); y += lineH; });
+        return y;
+      }
+      function footer(pageNum) {
+        doc.setFillColor(245,244,240);
+        doc.rect(0, H-11, W, 11, 'F');
+        doc.setFontSize(7.5); doc.setFont(undefined,'normal');
+        doc.setTextColor(160,158,150);
+        doc.text('myESGcheck.com  |  ESRS/VSME 2024 aligned  |  Self-assessment tool — not formal ESG assurance', M, H-4);
+        doc.text('Page '+pageNum+' / 9', W-M, H-4, {align:'right'});
+        doc.setTextColor(26,25,22);
+      }
+      function sectionHeader(title, section, subtitle) {
+        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+        doc.text('SECTION '+section, M, 20);
+        doc.setFontSize(22); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(safe(title), M, 31);
+        if (subtitle) {
+          doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+          doc.text(safe(subtitle), M, 39);
+        }
+        doc.setDrawColor(225,224,220); doc.setLineWidth(0.4);
+        doc.line(M, subtitle?43:36, W-M, subtitle?43:36);
+        return subtitle ? 50 : 43;
+      }
+      function scoreTag(score, x, y) {
+        var col = scoreColorArr(score);
+        var lbl = gradeLabel(score);
+        var bgMap = {
+          'Leading':[225,245,238], 'Progressing':[220,240,232],
+          'Developing':[250,238,220], 'Starting out':[248,232,220],
+          'Needs action':[252,235,235], 'Not assessed':[240,238,234]
+        };
+        var bg = bgMap[lbl] || [240,238,234];
+        var w = doc.getTextWidth(lbl) + 8;
+        doc.setFillColor(bg[0],bg[1],bg[2]);
+        doc.roundedRect(x, y-4, w, 6, 1, 1, 'F');
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
+        doc.text(lbl, x+4, y);
+        return w;
+      }
+
+      // ═══════════════════════════════════════════════════
+      // PAGE 1: COVER
+      // ═══════════════════════════════════════════════════
+      doc.setFillColor(4,52,44);
+      doc.rect(0, 0, W, 185, 'F');
+
+      // Logo
+      doc.setFillColor(15,110,86);
+      doc.roundedRect(M, M, 30, 10, 2, 2, 'F');
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('myESGcheck', M+5, M+7);
+
+      // Headline
+      doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(120,160,145);
+      doc.text('ESG ASSESSMENT REPORT  |  '+safe(coDate), M, 50);
+      doc.setFontSize(32); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('Your ESG', M, 68);
+      doc.text('Performance', M, 82);
+      doc.setTextColor(79,214,168);
+      doc.text('Report', M, 96);
+      doc.setFontSize(10); doc.setFont(undefined,'normal'); doc.setTextColor(160,200,185);
+      var subtext = 'A full ESG self-assessment for '+safe(co)+', covering '+catScoresArr.length+' areas across '+CATEGORIES.reduce(function(a,c2){return a+c2.questions.length;},0)+' questions.';
+      wrapText(subtext, M, 110, 150, 6);
+      doc.setFontSize(8); doc.setTextColor(110,150,135);
+      doc.text('Aligned with ESRS Set 1 (EU 2023/2772) and EFRAG VSME Standard (December 2024)', M, 125);
+
+      // Score boxes
+      var scoreLabel = isPreliminary ? 'Preliminary: '+overall+'%' : overall+'%';
+      var riskLabel = overall >= 70 ? 'Low ESG Risk' : overall >= 40 ? 'Moderate Risk' : 'Elevated Risk';
+      var riskSub   = overall >= 70 ? 'Based on score band' : overall >= 40 ? 'Based on score band' : 'Significant gaps identified';
+      var boxData = [
+        { label: isPreliminary?'Preliminary ESG Score':'Overall ESG Score', val: scoreLabel, sub: gradeLabel(overall) },
+        { label:'Assessment completion', val: completionPct+'%', sub: answeredQs+' of '+totalQs+' questions' },
+        { label:'Confidence level', val: confidenceLabel, sub: isPreliminary?'Complete all questions':'Score reflects full data' },
+        { label:'ESG Risk Rating', val: riskLabel, sub: riskSub }
+      ];
+      var boxW = Math.floor((W - 2*M - 6) / 4);
+      boxData.forEach(function(box, i) {
+        var bx = M + i*(boxW+2);
+        doc.setFillColor(255,255,255);
+        doc.roundedRect(bx, 138, boxW, 36, 3, 3, 'F');
+        doc.setDrawColor(255,255,255,20); doc.setLineWidth(0.4);
+        doc.roundedRect(bx, 138, boxW, 36, 3, 3, 'S');
+        doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(130,170,155);
+        doc.text(safe(box.label), bx+4, 145);
+        doc.setFontSize(i===0?15:10); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+        doc.text(safe(String(box.val).substring(0,18)), bx+4, i===0?157:155);
+        doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(79,214,168);
+        doc.text(safe(box.sub), bx+4, i===0?163:161);
+      });
+
+
+      // White bottom
+      doc.setFillColor(255,255,255);
+      doc.rect(0, 185, W, H-185, 'F');
+      doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text(safe(co), M, 198);
+      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      var parts = [];
+      if (safe(industry) && safe(industry) !== 'Not disclosed') parts.push('Industry: '+safe(industry));
+      if (safe(size) && safe(size) !== 'Not disclosed') parts.push('Employees: '+safe(size));
+      if (parts.length === 0) parts.push('Industry: Not disclosed');
+      doc.text(parts.join('   |   '), M, 205);
+      doc.text('Assessment date: '+safe(coDate)+'   |   Valid for: 12 months', M, 211);
+      doc.setFontSize(8); doc.setTextColor(160,158,150);
+      doc.text('Prepared by myESGcheck.com  |  Self-assessment tool aligned with ESRS Set 1 and EFRAG VSME 2024', M, 218);
+      // ESRS seal
+      doc.setDrawColor(15,110,86); doc.setLineWidth(1.5);
+      doc.circle(W-28, 202, 14, 'S');
+      doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+      doc.text('ESRS', W-28, 198, {align:'center'});
+      doc.text('ALIGNED', W-28, 203, {align:'center'});
+      doc.text('2024', W-28, 208, {align:'center'});
+      footer(1);;
+
+      // ═══════════════════════════════════════════════════
+      // PAGE 2: HOW SCORING WORKS (methodology)
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var ym = sectionHeader('How your score is calculated', 1, 'Transparent scoring methodology — so you understand exactly what your results mean');
+
+      // Scoring table
+      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      ym = wrapText('Each of the '+CATEGORIES.reduce(function(a,c2){return a+c2.questions.length;},0)+' questions in this assessment is scored on a simple 0-1 scale. Your category scores and overall score are calculated as weighted averages of your answers within each area.', M, ym, W-2*M, 5.5, 3);
+      ym += 8;
+
+      // Answer table
+      var tHeaders = ['Your answer','Points awarded','What it means'];
+      var tRows = [
+        ['Yes — fully in place','1.0 point','This practice is established and active in your business'],
+        ['Partial — in progress','0.5 points','You have started but not fully implemented this practice'],
+        ['No — not yet started','0.0 points','This is a gap requiring action'],
+        ['N/A — not applicable','Excluded','This question does not apply to your business type or size'],
+      ];
+      var tColW = [52, 38, W-2*M-52-38-4];
+      var tX = [M, M+54, M+94];
+
+      // Table header
+      doc.setFillColor(4,52,44);
+      doc.rect(M, ym, W-2*M, 9, 'F');
+      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      tHeaders.forEach(function(h,i){ doc.text(h, tX[i]+3, ym+6); });
+      ym += 11;
+
+      tRows.forEach(function(row, ri) {
+        if (ri%2===0) { doc.setFillColor(250,250,249); } else { doc.setFillColor(255,255,255); }
+        doc.rect(M, ym-2, W-2*M, 11, 'F');
+        doc.setFontSize(8); doc.setFont(undefined, ri===0||ri===1?'bold':'normal');
+        var tRowColor = ri===2?[163,45,45]:ri===1?[186,117,23]:ri===0?[15,110,86]:[130,128,122];
+        doc.setTextColor(tRowColor[0],tRowColor[1],tRowColor[2]);
+        doc.text(safe(row[0]), tX[0]+3, ym+5);
+        doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(safe(row[1]), tX[1]+3, ym+5);
+        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+        doc.text(safe(row[2]), tX[2]+3, ym+5);
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
+        doc.line(M, ym+9, W-2*M+M, ym+9);
+        ym += 12;
+      });
+
+      ym += 8;
+
+      // Formula box
+      doc.setFillColor(225,245,238);
+      doc.roundedRect(M, ym, W-2*M, 22, 3, 3, 'F');
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+      doc.text('Score formula', M+6, ym+8);
+      doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
+      doc.text('Category score = weighted sum of points / weighted count of applicable questions x 100', M+6, ym+12);
+      doc.text('Overall score = average of all 5 weighted category scores (N/A answers excluded from calculation)', M+6, ym+18);
+      ym += 30;
+
+      // Weight bands table
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text('Question weighting', M, ym); ym += 7;
+      var wBands = [
+        ['Critical (weight x3)', 'Questions where failure creates immediate legal, financial, or procurement risk.', 'H&S policy, Anti-bribery, Supply chain forced labour checks'],
+        ['Important (weight x2)', 'Questions strongly aligned to ESRS/VSME disclosure requirements.', 'Emissions baseline, Climate risk, Grievance mechanism, GDPR, ESG owner'],
+        ['Standard (weight x1)', 'Good practice questions relevant to most SMEs.', 'Waste tracking, Staff training, Stakeholder engagement, Supplier selection'],
+        ['Lower weight (x0.5)', 'Questions where No is not necessarily an ESG failure for many SMEs.', 'Community engagement, Inclusive procurement'],
+      ];
+      var wColors = [[163,45,45],[186,117,23],[15,110,86],[130,128,122]];
+      var wBgs = [[252,235,235],[250,238,220],[225,245,238],[240,238,234]];
+      wBands.forEach(function(wb, wi) {
+        if (ym > H-30) return;
+        doc.setFillColor(wBgs[wi][0],wBgs[wi][1],wBgs[wi][2]);
+        doc.roundedRect(M, ym, W-2*M, 20, 2, 2, 'F');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(wColors[wi][0],wColors[wi][1],wColors[wi][2]);
+        doc.text(safe(wb[0]), M+4, ym+7);
+        doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52); doc.setFontSize(7.5);
+        doc.text(safe(wb[1]), M+4, ym+13);
+        doc.setTextColor(130,128,122); doc.setFontSize(7);
+        doc.text('Examples: '+safe(wb[2]), M+4, ym+18);
+        ym += 23;
+      });
+      ym += 0; // end weight bands
+      ym += 30;
+
+      // Score bands table
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text('Score bands', M, ym);
+      ym += 8;
+
+      var bands = [
+        [80,100,'Leading','Strong performance. You can confidently respond to customer ESG requests and most supplier audits.',[15,110,86],[225,245,238]],
+        [60,79,'Progressing','Above average. You are likely to satisfy most basic customer ESG questionnaires. Some gaps remain for larger customers.',[29,158,117],[220,240,232]],
+        [40,59,'Developing','Typical for SMEs starting their ESG journey. Key gaps may affect procurement eligibility.',[186,117,23],[250,238,220]],
+        [20,39,'Starting out','Significant gaps. Likely to struggle with ESG questions from banks, investors, or larger customers.',[153,60,29],[248,232,220]],
+        [0,19,'Needs action','Critical gaps present. ESG requirements from customers and regulators will be difficult to meet.',[163,45,45],[252,235,235]],
+      ];
+      bands.forEach(function(band, bi) {
+        doc.setFillColor(band[5][0],band[5][1],band[5][2]);
+        doc.roundedRect(M, ym, W-2*M, 14, 2, 2, 'F');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(band[4][0],band[4][1],band[4][2]);
+        doc.text(band[0]+'-'+band[1]+'%  '+band[2], M+4, ym+9);
+        doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
+        doc.text(safe(band[3]), M+52, ym+9);
+        ym += 16;
+      });
+
+      ym += 6;
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+      doc.text('Your score: '+overall+'% — '+gradeLabel(overall), M, ym);
+      ym += 6;
+      doc.setFontSize(7.5); doc.setTextColor(130,128,122);
+      wrapText('Important: This assessment measures ESG management practices and preparedness. It is not a determination of ESRS, CSRD, or legal compliance.', M, ym, W-2*M, 5, 2);
+      footer(2);;
+
+      // already handled above
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var y2 = sectionHeader('Score overview', 2, 'How your business performed across all 5 ESG areas');
+
+      // Ring chart
+      var cx=M+22, cy=y2+36, r=20;
+      doc.setDrawColor(235,233,228); doc.setLineWidth(7);
+      doc.circle(cx, cy, r, 'S');
+      // Score arc
+      var steps=80, sa=-Math.PI/2, ea=sa+(2*Math.PI*overall/100);
+      doc.setLineWidth(7);
+      for (var s=0; s<steps; s++) {
+        var a1=sa+(ea-sa)*s/steps, a2=sa+(ea-sa)*(s+1)/steps;
+        doc.setDrawColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.line(cx+r*Math.cos(a1),cy+r*Math.sin(a1),cx+r*Math.cos(a2),cy+r*Math.sin(a2));
+      }
+      doc.setFontSize(20); doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+      doc.text(overall+'%', cx, cy+4, {align:'center'});
+      doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+      doc.text('OVERALL', cx, cy+9, {align:'center'});
+      scoreTag(overall, cx-18, cy+18);
+
+      // Bars
+      var by = y2+2;
+      catScoresArr.forEach(function(cs) {
+        var sc = cs.score === null ? 0 : cs.score;
+        var col = scoreColorArr(cs.score);
+        var lbl = gradeLabel(cs.score);
+        var catComp = catCompletion(cs.cat);
+        var catGradeLabel = gradeLabel(cs.score);
+        // Block "Leading" if fewer than 50% of category questions answered
+        if (catComp.pct < 50 && catGradeLabel === 'Leading') catGradeLabel = 'Provisional';
+        if (catComp.pct < 30) catGradeLabel = 'Insufficient data';
+        doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(safe(cs.cat.label), 60, by+4);
+
+        // Bar background
+        doc.setFillColor(235,233,228);
+        doc.roundedRect(60, by+10, W-M-60, 5, 1, 1, 'F');
+        if (sc > 0) {
+          doc.setFillColor(col[0],col[1],col[2]);
+          doc.roundedRect(60, by+10, (W-M-60)*sc/100, 5, 1, 1, 'F');
+        }
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
+        doc.text((cs.score===null?'N/A':sc+'%'), W-M, by+4, {align:'right'});
+        doc.setFontSize(7.5); doc.setFont(undefined,'normal');
+        // Show category completion
+        var catCompStr = '('+catComp.answered+'/'+catComp.total+' answered)';
+        doc.setTextColor(160,158,150);
+        doc.text(catGradeLabel+'  '+catCompStr, W-M, by+8.5, {align:'right'});
+        doc.setDrawColor(235,233,228); doc.setLineWidth(0.3);
+        doc.line(60, by+18, W-M, by+18);
+        by += 20;
+      });
+
+      // Summary box
+      var sb_y = by + 6;
+      doc.setFillColor(247,246,243);
+      doc.roundedRect(M, sb_y, W-2*M, 32, 3, 3, 'F');
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text('What this score means for your business', M+6, sb_y+8);
+      doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      var scorePrefix = isPreliminary ?
+        'PRELIMINARY SCORE — based on '+completionPct+'% completion ('+answeredQs+' of '+totalQs+' questions answered). Complete the remaining questions for a full assessment. ' :
+        '';
+      var scoreDesc = scorePrefix + 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" band for this self-assessment. ';
+      if (overall < 40) scoreDesc += 'At this score, there are significant ESG gaps to address. Most quick wins cost nothing but time and a written document.';
+      else if (overall < 60) scoreDesc += 'At this score, you are likely to satisfy many basic customer ESG questionnaires, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
+      else if (overall < 80) scoreDesc += 'You are performing well. At this score, you are well-placed to respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
+      else scoreDesc += 'You are performing at a leading level. Your ESG performance is a genuine competitive advantage for winning contracts and demonstrating responsibility to customers and investors.';
+      // Score breakdown table
+      var sb_table_y = sb_y + 36;
+      if (sb_table_y < H - 55) {
+        doc.setFillColor(247,246,243);
+        doc.rect(M, sb_table_y, W-2*M, 7, 'F');
+        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+        doc.text('AREA', M+3, sb_table_y+5);
+        doc.text('SCORE', M+88, sb_table_y+5);
+        doc.text('WEIGHT', M+115, sb_table_y+5);
+        doc.text('CONTRIBUTION', M+142, sb_table_y+5);
+        var sbt_y = sb_table_y + 9;
+        var totalContrib = 0;
+        catScoresArr.forEach(function(cs, ci) {
+          var sc = cs.score === null ? 0 : cs.score;
+          var contrib = (sc * 0.2).toFixed(1);
+          totalContrib += parseFloat(contrib);
+          if (ci%2===0) { doc.setFillColor(252,252,251); doc.rect(M, sbt_y-2, W-2*M, 8, 'F'); }
+          doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34);
+          doc.text(safe(cs.cat.label), M+3, sbt_y+3.5);
+          var scCol = scoreColorArr(cs.score);
+          doc.setFont(undefined,'bold'); doc.setTextColor(scCol[0],scCol[1],scCol[2]);
+          doc.text(cs.score===null?'N/A':sc+'%', M+88, sbt_y+3.5);
+          doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+          doc.text('20%', M+115, sbt_y+3.5);
+          doc.setTextColor(40,38,34);
+          doc.text(contrib+' pts', M+142, sbt_y+3.5);
+          doc.setDrawColor(232,230,225); doc.setLineWidth(0.2);
+          doc.line(M, sbt_y+6, W-M, sbt_y+6);
+          sbt_y += 9;
+        });
+        doc.setFillColor(240,238,234); doc.rect(M, sbt_y-2, W-2*M, 8, 'F');
+        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('Overall score', M+3, sbt_y+3.5);
+        doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.text(overall+'%', M+88, sbt_y+3.5);
+        doc.setTextColor(130,128,122); doc.setFont(undefined,'normal');
+        doc.text('100%', M+115, sbt_y+3.5);
+        doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.text(totalContrib.toFixed(1)+' pts', M+142, sbt_y+3.5);
+      }
+
+      var lowestCat = catScoresArr.reduce(function(a,b){
+        if (a.score===null) return b; if (b.score===null) return a;
+        return a.score < b.score ? a : b;
+      });
+      var lowestSentence = (lowestCat && lowestCat.score !== null) ?
+        ' Your biggest improvement opportunity is '+safe(lowestCat.cat.label)+' ('+lowestCat.score+'%) — focus here first.' : '';
+      wrapText(scoreDesc+lowestSentence, M+6, sb_y+15, W-2*M-12, 5.5, 4);
+
+      // "X points away from next band" motivational line
+      var bandThresholds = [
+        {min:20, label:'Starting out'}, {min:40, label:'Developing'},
+        {min:60, label:'Progressing'}, {min:80, label:'Leading'}
+      ];
+      var nextBand = null;
+      for (var bi=0; bi<bandThresholds.length; bi++) {
+        if (overall < bandThresholds[bi].min) { nextBand = bandThresholds[bi]; break; }
+      }
+      if (nextBand) {
+        var ptsAway = nextBand.min - overall;
+        var nextMsg = 'You are '+ptsAway+' point'+(ptsAway!==1?'s':'')+' away from "'+nextBand.label+'" ('+nextBand.min+'%). Closing your top gaps could get you there.';
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.text(safe(nextMsg), M+6, sb_y+28);
+      }
+
+      // Industry benchmark comparison bars
+      var benchmarks = {
+        'construction':[46,68,32,'Construct.'], 'build':[46,68,32,'Construct.'],
+        'civil':[46,68,32,'Construct.'], 'manufactur':[49,71,35,'Manufactur.'],
+        'retail':[44,65,30,'Retail'], 'food':[44,65,30,'Retail/Food'],
+        'professional':[52,74,38,'Prof. Svcs'],
+        'consult':[52,74,38,'Prof. Svcs'],
+        'tech':[52,74,38,'Prof. Svcs'],
+        'software':[52,74,38,'Prof. Svcs'],
+      };
+      var indKey = safe(industry).toLowerCase();
+      var bmark = null;
+      Object.keys(benchmarks).forEach(function(k){ if(indKey.indexOf(k)>-1) bmark=benchmarks[k]; });
+
+      var bmy = sb_y + 36;
+      if (bmark && bmy < H-55) {
+        doc.setFillColor(240,248,255);
+        doc.setDrawColor(180,210,240); doc.setLineWidth(0.4);
+        doc.roundedRect(M, bmy, W-2*M, 34, 3, 3, 'FD');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(12,68,124);
+        doc.text(safe(co)+' vs. '+bmark[3]+' SMEs (first assessment)', M+5, bmy+7);
+        var barRows = [
+          [safe(co), overall, gcArr],
+          ['Typical '+bmark[3]+' SME', bmark[0], [130,128,122]],
+          ['Top 25% '+bmark[3], bmark[1], [15,110,86]],
+        ];
+        var bBarY = bmy+11;
+        var bBarW = W-2*M-75;
+        barRows.forEach(function(bd) {
+          doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
+          doc.text(bd[0].substring(0,22), M+5, bBarY+3);
+          doc.setFillColor(235,233,228); doc.roundedRect(M+68,bBarY,bBarW,4,1,1,'F');
+          doc.setFillColor(bd[2][0],bd[2][1],bd[2][2]);
+          doc.roundedRect(M+68,bBarY,bBarW*bd[1]/100,4,1,1,'F');
+          doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(bd[2][0],bd[2][1],bd[2][2]);
+          doc.text(bd[1]+'%', M+68+bBarW+3, bBarY+3);
+          bBarY += 8;
+        });
+        doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+        doc.text('Illustrative benchmark derived from myESGcheck assessments and public SME ESG research (2024-25). Individual scores vary by business size, subcontractor use and sector specialisation. Benchmarks are indicative and not statistically representative of the entire sector.', M+5, bmy+32);
+        bmy += 38;
+      }
+
+      // ESG Maturity Path box
+      var mpY = bmark ? bmy : sb_y + 36;
+      if (mpY < H - 55) {
+        doc.setFillColor(247,246,243);
+        doc.setDrawColor(225,224,220); doc.setLineWidth(0.4);
+        doc.roundedRect(M, mpY, W-2*M, 28, 3, 3, 'FD');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('Your ESG maturity path', M+5, mpY+7);
+        var stages = [
+          { label:'WHERE YOU ARE', val: gradeLabel(overall)+' — '+overall+'%', col: gcArr, arrow: false },
+          { label:'NEXT STAGE', val: (nextBand ? nextBand.label+' — '+nextBand.min+'%+ ('+(nextBand.min - overall)+' pts away)' : 'Leading band'), col: [186,117,23], arrow: true },
+          { label:'AFTER HIGH ACTIONS', val: projMin+'–'+projMax+'% — '+bandLabel+' band', col: [15,110,86], arrow: true },
+        ];
+        var stX = M+5;
+        var stW = (W-2*M-10)/3;
+        stages.forEach(function(st, si) {
+          if (si > 0) {
+            doc.setFontSize(10); doc.setTextColor(160,158,150);
+            doc.text('→', stX-4, mpY+18);
+          }
+          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+          doc.text(safe(st.label), stX, mpY+13);
+          doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(st.col[0],st.col[1],st.col[2]);
+          var stLines = doc.splitTextToSize(safe(st.val), stW-4);
+          doc.text(stLines[0], stX, mpY+19);
+          if (stLines[1]) doc.text(stLines[1], stX, mpY+24);
+          stX += stW + 2;
+        });
+        bmy = mpY + 32;
+      }
+
+      // Business impact box
+      var bimpactItems = getBusinessImpact(overall, industry);
+      if (bimpactItems.length > 0 && bmy < H-60) {
+        var biH = 10 + bimpactItems.length * 7;
+        doc.setFillColor(247,246,243);
+        doc.setDrawColor(225,224,220); doc.setLineWidth(0.4);
+        doc.roundedRect(M, bmy, W-2*M, biH, 3, 3, 'FD');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('What this score means in practice', M+5, bmy+7);
+        var biLineY = bmy+13;
+        bimpactItems.forEach(function(item) {
+          var good = item.charAt(0)==='+';
+          doc.setFillColor(good?15:163, good?110:45, good?86:45);
+          doc.circle(M+5, biLineY-1, 1.5, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'normal');
+          doc.setTextColor(good?8:100, good?80:30, good?65:30);
+          doc.text(safe(item.slice(1).trim()), M+10, biLineY);
+          biLineY += 7;
+        });
+      }
+
+      footer(3);
+
+      // ═══════════════════════════════════════════════════
+      // PAGE 3: KEY FINDINGS — Gaps & Strengths
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var y3 = sectionHeader('Key findings', 3, 'What the assessment revealed about your current ESG performance');
+
+      // Stats row
+      var statBoxes = [
+        { val: gaps.length, label: 'Gaps identified', col: [163,45,45], bg: [252,235,235] },
+        { val: partials.length, label: 'In progress', col: [186,117,23], bg: [250,238,220] },
+        { val: goods.length, label: 'Already strong', col: [15,110,86], bg: [225,245,238] },
+      ];
+      statBoxes.forEach(function(sb, i) {
+        var sx = M + i*60;
+        doc.setFillColor(sb.bg[0],sb.bg[1],sb.bg[2]);
+        doc.roundedRect(sx, y3, 56, 22, 3, 3, 'F');
+        doc.setFontSize(18); doc.setFont(undefined,'bold'); doc.setTextColor(sb.col[0],sb.col[1],sb.col[2]);
+        doc.text(String(sb.val), sx+8, y3+13);
+        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(sb.col[0],sb.col[1],sb.col[2]);
+        doc.text(sb.label, sx+8, y3+19);
+      });
+
+      // Gap insight — based on LOWEST SCORE (not gap count)
+      var sortedByScore = catScoresArr
+        .filter(function(x){ return x.score !== null; })
+        .sort(function(a,b){ return a.score - b.score; });
+      if (sortedByScore.length >= 2) {
+        var s1 = sortedByScore[0], s2 = sortedByScore[1];
+        var gcSentence = 'Biggest improvement opportunity: '+safe(s1.cat.label)+' ('+s1.score+'%) and '+safe(s2.cat.label)+' ('+s2.score+'%) — focus here first.';
+        doc.setFontSize(8.5); doc.setFont(undefined,'italic'); doc.setTextColor(92,90,85);
+        doc.text(safe(gcSentence), M, y3+26);
+      }
+      var fy = y3 + 34;
+
+      // Gaps
+      if (gaps.length > 0) {
+        var shownGaps = Math.min(gaps.length, 6);
+        var gapHdr = gaps.length > 6 ? 'GAPS — Not yet in place (showing '+shownGaps+' of '+gaps.length+')' : 'GAPS — Not yet in place';
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(163,45,45);
+        doc.text(gapHdr, M, fy); fy += 6;
+        gaps.slice(0, 6).forEach(function(f) {
+          if (fy > H-30) return;
+          doc.setFillColor(252,235,235);
+          doc.setDrawColor(240,192,192); doc.setLineWidth(0.3);
+          var fCardH2 = doc.splitTextToSize(safe(f.q), W-2*M-14).length > 1 ? 22 : 17;
+          doc.roundedRect(M, fy, W-2*M, fCardH2, 2, 2, 'FD');
+          doc.setFillColor(163,45,45); doc.circle(M+5, fy+8, 2, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85);
+          doc.text(safe(f.cat), M+10, fy+6);
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(7.5);
+          var fqLines = doc.splitTextToSize(safe(f.q), W-2*M-14);
+          fqLines.slice(0,2).forEach(function(fl,fli){ doc.text(fl, M+10, fy+11+(fli*4.5)); });
+          var fRowH = fqLines.length > 1 ? 25 : 20;
+          fy += fRowH;
+        });
+        fy += 4;
+      }
+
+      // In progress
+      if (partials.length > 0 && fy < H-50) {
+        var shownParts = Math.min(partials.length, 4);
+        var partHdr = partials.length > 4 ? 'IN PROGRESS — Started but not complete (showing '+shownParts+' of '+partials.length+')' : 'IN PROGRESS — Started but not complete';
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(186,117,23);
+        doc.text(partHdr, M, fy); fy += 6;
+        partials.slice(0, 4).forEach(function(f) {
+          if (fy > H-30) return;
+          doc.setFillColor(250,238,220);
+          doc.setDrawColor(240,216,160); doc.setLineWidth(0.3);
+          doc.roundedRect(M, fy, W-2*M, 16, 2, 2, 'FD');
+          doc.setFillColor(186,117,23); doc.circle(M+5, fy+8, 2, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85);
+          doc.text(safe(f.cat), M+10, fy+6);
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(7.5);
+          var fqLines = doc.splitTextToSize(safe(f.q), W-2*M-14);
+          fqLines.slice(0,2).forEach(function(fl,fli){ doc.text(fl, M+10, fy+11+(fli*4.5)); });
+          var fRowH = fqLines.length > 1 ? 25 : 20;
+          fy += fRowH;
+        });
+      }
+      // Evidence Maturity table
+      if (fy < H - 60) {
+        fy += 6;
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('Evidence maturity', M, fy); fy += 6;
+        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+        doc.text('How well-documented is your ESG practice in each area?', M, fy); fy += 8;
+
+        // Build evidence maturity from answers
+        var evidenceRows = [];
+        var criticalQMap = [
+          { label:'H&S policy', catId:'social', qi:0 },
+          { label:'Anti-bribery policy', catId:'governance', qi:1 },
+          { label:'Supply chain due diligence', catId:'supply', qi:0 },
+          { label:'Greenhouse gas baseline', catId:'climate', qi:0 },
+          { label:'Climate risk assessment', catId:'climate', qi:2 },
+          { label:'GDPR / data protection', catId:'governance', qi:4 },
+          { label:'ESG owner (named person)', catId:'governance', qi:2 },
+          { label:'Grievance mechanism', catId:'social', qi:4 },
+          { label:'Workforce metrics', catId:'social', qi:6 },
+          { label:'Supplier ethics clauses', catId:'supply', qi:2 },
+        ];
+
+        // Table header
+        doc.setFillColor(245,244,240);
+        doc.rect(M, fy, W-2*M, 7, 'F');
+        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+        doc.text('ESG AREA', M+4, fy+5);
+        doc.text('CURRENT STATUS', M+85, fy+5);
+        doc.text('PRIORITY', W-M-22, fy+5, {align:'right'});
+        fy += 9;
+
+        criticalQMap.forEach(function(item, idx) {
+          if (fy > H-25) return;
+          var ans = answers[item.catId+'_'+item.qi];
+          var statusLabel, statusCol, statusBg, priority, priorityCol, priorityBg;
+          if (ans === 'yes') {
+            statusLabel='Documented'; statusCol=[15,110,86]; statusBg=[225,245,238];
+            priority='Maintain'; priorityCol=[130,128,122]; priorityBg=[240,238,234];
+          } else if (ans === 'partial') {
+            statusLabel='Partial / informal'; statusCol=[186,117,23]; statusBg=[250,238,220];
+            priority='Formalise'; priorityCol=[186,117,23]; priorityBg=[250,238,220];
+          } else if (ans === 'no') {
+            statusLabel='Not in place'; statusCol=[163,45,45]; statusBg=[252,235,235];
+            priority='Act now'; priorityCol=[163,45,45]; priorityBg=[252,235,235];
+          } else {
+            statusLabel='Not applicable'; statusCol=[130,128,122]; statusBg=[240,238,234];
+            priority='-'; priorityCol=[130,128,122]; priorityBg=[240,238,234];
+          }
+          if (idx%2===0) { doc.setFillColor(252,252,251); doc.rect(M, fy-2, W-2*M, 11, 'F'); }
+          doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+          doc.text(safe(item.label), M+4, fy+5);
+          doc.setFillColor(statusBg[0],statusBg[1],statusBg[2]);
+          doc.roundedRect(M+83, fy, 52, 7, 1, 1, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(statusCol[0],statusCol[1],statusCol[2]);
+          doc.text(statusLabel, M+85, fy+5);
+          doc.setFillColor(priorityBg[0],priorityBg[1],priorityBg[2]);
+          doc.roundedRect(W-M-32, fy, 30, 7, 1, 1, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(priorityCol[0],priorityCol[1],priorityCol[2]);
+          doc.text(priority, W-M-17, fy+5, {align:'center'});
+          doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
+          doc.line(M, fy+9, W-M, fy+9);
+          fy += 12;
+        });
+      }
+      // Biggest Strength highlight box
+      var biggestStrength = null;
+      CATEGORIES.forEach(function(cat) {
+        var wts = cat.weights || cat.questions.map(function(){ return 1; });
+        cat.questions.forEach(function(q,qi) {
+          if (answers[cat.id+'_'+qi] === 'yes') {
+            var w = wts[qi] || 1;
+            if (!biggestStrength || w > biggestStrength.w) {
+              biggestStrength = { q:q, cat:cat.label, w:w };
+            }
+          }
+        });
+      });
+      if (biggestStrength && fy < H-40) {
+        doc.setFillColor(225,245,238);
+        doc.setDrawColor(184,224,208); doc.setLineWidth(0.4);
+        doc.roundedRect(M, fy, W-2*M, 20, 3, 3, 'FD');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+        doc.text('★ BIGGEST STRENGTH', M+5, fy+7);
+        doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+        var strengthTitle = safe(biggestStrength.cat)+': '+doc.splitTextToSize(safe(biggestStrength.q), W-2*M-12)[0];
+        doc.text(strengthTitle, M+5, fy+13);
+        doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(60,100,80);
+        doc.text('Your highest-weight practice already in place — this is a genuine asset in customer ESG questionnaires.', M+5, fy+18);
+        fy += 24;
+      }
+
+      // Already Strong section
+      if (goods.length > 0 && fy < H-40) {
+        fy += 4;
+        var maxGoods = 5;
+        var shownGoods = 0;
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+        doc.text('ALREADY STRONG ✓ — '+goods.length+' area'+(goods.length!==1?'s':'')+' working well', M, fy);
+        fy += 6;
+        goods.forEach(function(f) {
+          if (fy > H-25 || shownGoods >= maxGoods) return;
+          doc.setFillColor(225,245,238);
+          doc.setDrawColor(184,224,208); doc.setLineWidth(0.3);
+          doc.roundedRect(M, fy, W-2*M, 14, 2, 2, 'FD');
+          doc.setFillColor(15,110,86); doc.circle(M+5, fy+7, 2, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+          doc.text(safe(f.cat), M+10, fy+6);
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+          doc.text(doc.splitTextToSize(safe(f.q), W-2*M-14)[0], M+10, fy+11);
+          fy += 17; shownGoods++;
+        });
+        if (goods.length > maxGoods) {
+          doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+          doc.text('+ '+(goods.length-maxGoods)+' more strong areas \u2014 see Category Detail (Section 6)', M, fy);
+          fy += 5;
+        }
+      }
+      footer(4);
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var y4 = sectionHeader('Prioritised action plan', 4, 'Your top actions ranked by impact and urgency');
+
+      // Column headers
+      // Action plan: 3-column layout, no timeline overlap
+      // Col widths: Priority=26, Area=42, Action=W-2*M-26-42-8=approx 96mm
+      var aColP=M, aColA=M+26, aColQ=M+64, aColQW=W-M-64-2;
+
+      var aColI = W-M-20; // impact column
+      doc.setFillColor(245,244,240);
+      doc.rect(M, y4, W-2*M, 7, 'F');
+      doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+      doc.text('PRIORITY', aColP+2, y4+5);
+      doc.text('AREA', aColA+2, y4+5);
+      doc.text('ACTION REQUIRED', aColQ+2, y4+5);
+      doc.text('IMPACT', aColI, y4+5, {align:'right'});
+      y4 += 9;
+
+      // Convert questions to action statements
+      // Business risk lookup — why each gap matters commercially
+      var businessRisks = [
+        [/^Do you know roughly how much energy/i, 'Without baseline data, you cannot set targets, report to customers, or access green finance.'],
+        [/^Have you looked beyond your own premises/i, 'Scope 3 emissions are increasingly requested by larger customers and supply chain partners.'],
+        [/^Have you thought about how things like extreme weather/i, 'Unassessed climate risks can affect insurance, lending terms, and business continuity planning.'],
+        [/^Do you have any goals or a rough plan to reduce/i, 'Without a documented target, it is difficult to demonstrate environmental commitment to customers, banks, or procurement teams.'],
+        [/^Have you actually changed anything/i, 'Without evidence of action, ESG claims lack credibility with customers and auditors.'],
+        [/^Do any of the energy sources/i, 'Renewable energy sourcing is now a standard question in corporate supply chain ESG audits.'],
+        [/^Do you communicate your environmental goals/i, 'Customers increasingly expect visible ESG commitments as a condition of supplier approval.'],
+        [/^Do you check whether any of the materials/i, 'Unscreened supply inputs create liability under UK environmental and consumer protection law.'],
+        [/^Have you thought about the environmental impact of what/i, 'Lifecycle information is increasingly requested by customers and may become relevant under emerging product and producer responsibility frameworks.'],
+        [/^Do you actively manage how much energy/i, 'Unmanaged premises consumption increases costs and creates compliance gaps under SECR reporting.'],
+        [/^Do you keep track of how much waste/i, 'Undocumented waste creates legal liability and fails basic ESG questionnaire requirements.'],
+        [/^Do you know whether your business premises/i, 'Proximity to protected habitats creates regulatory risk and potential liability for environmental damage.'],
+        [/^Do you try to design or source products/i, 'Single-use and non-recyclable materials are increasingly subject to UK and EU product regulation and customer rejection.'],
+        [/^Do you monitor how much water/i, 'Water stewardship is a growing requirement in food, construction, and manufacturing supply chains.'],
+        [/^Have you had any environmental incidents/i, 'Undocumented incidents create regulatory and reputational risk, and may invalidate insurance claims.'],
+        [/^Do you have anything in place to protect your employees/i, 'Without a H&S policy, you face legal liability, higher insurance premiums, and procurement disqualification.'],
+        [/^Do you offer your employees at least/i, 'Non-compliant parental leave policies create legal risk and damage your ability to retain staff.'],
+        [/^Are your products or services described honestly/i, 'Inaccurate product claims create consumer protection liability and damage customer trust.'],
+        [/^Does your business do anything to give back/i, 'Community engagement is increasingly expected by local authorities and large corporate clients.'],
+        [/^Is there a safe and easy way for your employees/i, 'Without a grievance mechanism, workplace issues escalate, creating legal risk and staff turnover.'],
+        [/^Do you regularly share information with your staff/i, 'Poor internal communication increases staff uncertainty, reduces retention, and creates legal obligations under UK employment law.'],
+        [/^Do you track any basic workforce data/i, 'Without workforce data, it becomes difficult to demonstrate fair employment practices to customers, investors, or procurement teams.'],
+        [/^Do you offer your employees any training/i, 'Lack of development opportunities is a leading cause of staff turnover, which carries direct financial cost.'],
+        [/^Do you pay all your employees at least the real Living Wage/i, 'Below-Living-Wage pay is increasingly cited in procurement disqualification and reputational risk.'],
+        [/^Do you have any process for checking whether your main suppliers/i, 'Without supplier checks, you carry liability for your supply chain under UK Modern Slavery Act and CSDDD.'],
+        [/^Have you ever checked whether any of your suppliers/i, 'Undetected human rights violations in your supply chain create legal, reputational, and procurement risk.'],
+        [/^Do your contracts or buying terms with suppliers/i, 'Without ethical contract clauses, you have no recourse if a supplier fails ESG standards demanded by your customers.'],
+        [/^Do you make any effort to buy from local/i, 'Public sector and large corporate buyers increasingly require evidence of inclusive procurement in tender submissions.'],
+        [/^When choosing new suppliers/i, 'ESG-blind supplier selection increases your exposure to supply chain risks flagged in corporate audits.'],
+        [/^Do you have a Modern Slavery statement/i, 'UK organisations with turnover over £36m must publish a Modern Slavery statement. Below that threshold, customers increasingly require one.'],
+        [/^Do you give smaller or local suppliers/i, 'Poor supplier payment practices create reputational risk and are scrutinised in public sector procurement.'],
+        [/^Does your business have written guidelines/i, 'Without a code of conduct, staff cannot consistently make ethical decisions, creating legal and reputational exposure.'],
+        [/^Does your business have a clear rule.*bribery/i, 'UK Bribery Act 2010 creates corporate liability for bribery. Without a policy, you lack a legal defence.'],
+        [/^Is there a specific person in your business/i, 'Without a named sustainability lead, ESG actions remain unimplemented and evidence requests become unmanageable.'],
+        [/^Do you share any information about your sustainability/i, 'Invisible ESG efforts provide no competitive advantage and cannot be used in customer or investor conversations.'],
+        [/^Do you have basic data protection practices/i, 'UK GDPR non-compliance carries fines up to £17.5m or 4% of global turnover, plus reputational damage.'],
+        [/^Before introducing a new product/i, 'Unassessed product risks create liability under consumer protection, environmental, and health and safety law.'],
+        [/^Do you actively involve employees/i, 'Lack of stakeholder engagement reduces buy-in, creates legal risk under UK employment law, and weakens ESG credibility.'],
+        [/^Has your business had any serious ethical incidents/i, 'Unaddressed incidents create ongoing legal liability and signal systemic governance failures to auditors.'],
+        [/^Do you have a whistleblowing policy/i, 'Without whistleblowing protection, staff are less likely to report issues early, allowing problems to escalate.'],
+        [/^Do you pay your taxes/i, 'Aggressive tax arrangements create reputational risk and are increasingly scrutinised in ESG governance assessments.'],
+      ];
+      function getBusinessRisk(q) {
+        var s = safe(q);
+        for (var r=0; r<businessRisks.length; r++) {
+          if (businessRisks[r][0].test(s)) return businessRisks[r][1];
+        }
+        return '';
+      }
+
+            function questionToAction(q) {
+        var s = safe(q);
+        // Map question patterns to clear imperative actions
+        var transforms = [
+          [/^Do you know roughly how much energy/i, 'Measure your energy consumption and estimate your greenhouse gas emissions.'],
+          [/^Have you looked beyond your own premises/i, 'Map your carbon footprint beyond your premises: deliveries, travel, and key suppliers.'],
+          [/^Have you thought about how things like extreme weather/i, 'Assess climate-related risks to your business: energy costs, extreme weather, and new regulations.'],
+          [/^Do you have any goals or a rough plan to reduce/i, 'Set a documented target to reduce your energy use or carbon emissions.'],
+          [/^Have you actually changed anything/i, 'Take concrete action to reduce your environmental impact: lighting, travel, or greener suppliers.'],
+          [/^Do any of the energy sources/i, 'Switch at least one energy source to a renewable or low-carbon provider.'],
+          [/^Do you communicate your environmental goals/i, 'Publish your environmental goals on your website or in staff communications.'],
+          [/^Do you check whether any of the materials/i, 'Review your key materials and supplies for environmental or pollution risks.'],
+          [/^Have you thought about the environmental impact of what/i, 'Assess the full lifecycle environmental impact of your products or services.'],
+          [/^Do you actively manage how much energy/i, 'Actively manage and monitor energy, water, and waste from your premises.'],
+          [/^Do you keep track of how much waste/i, 'Track your waste output and implement a waste reduction plan.'],
+          [/^Do you know whether your business premises/i, 'Check if your sites or supply chain are near protected habitats and take steps to avoid harm.'],
+          [/^Do you try to design or source products/i, 'Adopt a circular approach: longer-lasting products, recycled materials, less single-use packaging.'],
+          [/^Do you monitor how much water/i, 'Monitor your water consumption and implement water reduction measures.'],
+          [/^Have you had any environmental incidents/i, 'Document any past environmental incidents and ensure corrective actions are in place.'],
+          [/^Do you have anything in place to protect your employees/i, 'Implement a formal health and safety policy with named responsible person and regular risk assessments.'],
+          [/^Do you offer your employees at least/i, 'Review your parental leave policy to ensure it meets legal minimum and is actively encouraged.'],
+          [/^Are your products or services described honestly/i, 'Audit your customer communications for accuracy, including environmental and safety claims.'],
+          [/^Does your business do anything to give back/i, 'Establish a structured community contribution: local hiring, charity partnership, or volunteering.'],
+          [/^Is there a safe and easy way for your employees/i, 'Create a formal grievance or whistleblowing mechanism accessible to all staff.'],
+          [/^Do you regularly share information with your staff/i, 'Implement regular staff briefings on business performance and plans that affect them.'],
+          [/^Do you track any basic workforce data/i, 'Start tracking key workforce metrics: turnover, gender balance, full-time vs part-time ratio.'],
+          [/^Do you offer your employees any training/i, 'Introduce a structured training and development programme for all staff.'],
+          [/^Do you pay all your employees at least the real Living Wage/i, 'Review pay against the real Living Wage and conduct a pay equity audit.'],
+          [/^Do you have any process for checking whether your main suppliers/i, 'Introduce a supplier assessment process covering labour rights, health and safety, and environment.'],
+          [/^Have you ever checked whether any of your suppliers/i, 'Conduct a basic human rights due diligence review of your top 5 suppliers.'],
+          [/^Do your contracts or buying terms with suppliers/i, 'Add ethical conduct, labour standards, and environmental requirements to all supplier contracts.'],
+          [/^Do you make any effort to buy from local/i, 'Establish an inclusive procurement policy that actively considers local and minority-owned suppliers.'],
+          [/^When choosing new suppliers/i, 'Incorporate ESG criteria into your supplier selection process alongside price and quality.'],
+          [/^Do you have a Modern Slavery statement/i, 'Adopt a supplier due diligence process covering modern slavery and forced labour risks. If your annual turnover exceeds £36 million, assess whether a formal Modern Slavery Statement is legally required.'],
+          [/^Do you give smaller or local suppliers/i, 'Implement fair procurement practices: open tendering, 30-day payment terms, reasonable contracts.'],
+          [/^Does your business have written guidelines/i, 'Implement a written code of conduct covering ethics, gifts, conflicts of interest, and decision-making.'],
+          [/^Does your business have a clear rule.*bribery/i, 'Adopt a formal anti-bribery policy and communicate it to all staff.'],
+          [/^Is there a specific person in your business/i, 'Appoint a named sustainability lead responsible for ESG risk management and reporting.'],
+          [/^Do you share any information about your sustainability/i, 'Publish a brief sustainability statement on your website or in your annual review.'],
+          [/^Do you have basic data protection practices/i, 'Implement GDPR-compliant data protection procedures including a record of processing activities.'],
+          [/^Before introducing a new product/i, 'Introduce an impact assessment process before launching new products, services, or operations.'],
+          [/^Do you actively involve employees/i, 'Create formal channels for stakeholder engagement: staff surveys, customer feedback, community consultation.'],
+          [/^Has your business had any serious ethical incidents/i, 'Review any past ethical incidents and ensure formal investigation and remediation processes are in place.'],
+          [/^Do you have a whistleblowing policy/i, 'Implement a confidential whistleblowing policy protecting staff from retaliation.'],
+          [/^Do you pay your taxes/i, 'Review your tax arrangements to ensure compliance and alignment with responsible tax principles.'],
+        ];
+        for (var t=0; t<transforms.length; t++) {
+          if (transforms[t][0].test(s)) return transforms[t][1];
+        }
+        // Fallback: clean up question into imperative
+        s = s.replace(/^Do you /i,'').replace(/^Have you /i,'').replace(/^Is there /i,'').replace(/^Are your /i,'').replace(/^Does your /i,'').replace(/^Has your /i,'').replace(/^When /i,'').replace(/\?$/, '');
+        s = s.charAt(0).toUpperCase() + s.slice(1) + '.';
+        return s;
+      }
+
+      // Priority override: some gaps are genuinely lower priority for most SMEs
+      var lowerPriorityPatterns = [
+        /net-zero/i, /communicate your environmental goals/i,
+        /give back to the local community/i, /local businesses, small suppliers/i,
+        /design or source products and packaging/i
+      ];
+      function getPriority(q) {
+        for (var p=0; p<lowerPriorityPatterns.length; p++) {
+          if (lowerPriorityPatterns[p].test(safe(q))) return 'Medium';
+        }
+        return 'High';
+      }
+      // Pre-calculate category weighted totals for score impact
+      var catWeightTotals = {};
+      CATEGORIES.forEach(function(cat) {
+        var wts = cat.weights || cat.questions.map(function(){ return 1; });
+        catWeightTotals[cat.label] = wts.reduce(function(a,b){ return a+b; }, 0);
+      });
+      function estimateImpact(q, catLabel) {
+        var cat2 = CATEGORIES.find(function(c2){ return c2.label === catLabel; });
+        if (!cat2) return null;
+        var qi2 = cat2.questions.indexOf(q);
+        var w2 = (cat2.weights && cat2.weights[qi2]) ? cat2.weights[qi2] : 1;
+        var total2 = catWeightTotals[catLabel] || cat2.questions.length;
+        var catImpact = (w2 / total2) * 20;
+        var lo = Math.max(1, Math.round(catImpact * 0.7));
+        var hi = Math.round(catImpact * 1.2);
+        if (lo >= hi) hi = lo + 1;
+        return '+'+lo+'-'+hi+' pts';
+      }
+
+      var gapActions = gaps.map(function(x){
+        var pri = getPriority(x.q);
+        return Object.assign({
+          p: pri,
+          col: pri==='High'?[163,45,45]:[186,117,23],
+          bg: pri==='High'?[252,235,235]:[250,238,200],
+          impact: estimateImpact(x.q, x.cat)
+        }, x);
+      });
+      // Sort: High priority first, then by category score (lowest scoring categories first)
+      var catScoreMap = {};
+      catScoresArr.forEach(function(cs){ catScoreMap[cs.cat.label] = cs.score === null ? 100 : cs.score; });
+      gapActions.sort(function(a,b) {
+        // High before Medium
+        var pDiff = (a.p==='High'?0:1) - (b.p==='High'?0:1);
+        if (pDiff !== 0) return pDiff;
+        // Within same priority: lowest category score first
+        return (catScoreMap[a.cat]||50) - (catScoreMap[b.cat]||50);
+      });
+      var actions = gapActions.slice(0,5)
+        .concat(partials.slice(0,2).map(function(x){ return Object.assign({p:'Medium', col:[186,117,23], bg:[250,238,220]}, x); }))
+        .slice(0,7);
+
+      actions.forEach(function(a, i) {
+        if (y4 > H-26) return;
+        // Calculate actual row height based on text wrap
+        doc.setFontSize(7.5);
+        var actionText = questionToAction(a.q);
+        var aTextLines = doc.splitTextToSize(actionText, aColQW);
+        var nLines = Math.min(aTextLines.length, 2);
+        var riskText = getBusinessRisk(a.q);
+        var riskLines = riskText ? doc.splitTextToSize('Risk: '+safe(riskText), aColQW).length : 0;
+        var rowH = Math.max(18, 5 + nLines * 5 + Math.min(riskLines,2) * 4.5);
+
+        if (i%2===0) { doc.setFillColor(250,250,249); doc.rect(M, y4-2, W-2*M, rowH, 'F'); }
+        // Priority badge
+        doc.setFillColor(a.bg[0],a.bg[1],a.bg[2]);
+        doc.roundedRect(aColP, y4, 25, 6, 1, 1, 'F');
+        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(a.col[0],a.col[1],a.col[2]);
+        doc.text(a.p, aColP+12.5, y4+4, {align:'center'});
+        // Area — bold, single line
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(doc.splitTextToSize(safe(a.cat),40)[0], aColA, y4+4);
+        // Action text
+        doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34); doc.setFontSize(7.5);
+        aTextLines.slice(0,2).forEach(function(line, li) {
+          doc.text(line, aColQ, y4+4+(li*5));
+        });
+        // Business risk
+        var bRisk = getBusinessRisk(a.q);
+        if (bRisk) {
+          var riskLines = doc.splitTextToSize('Risk: '+safe(bRisk), aColQW);
+          doc.setFontSize(7); doc.setFont(undefined,'italic'); doc.setTextColor(163,45,45);
+          riskLines.slice(0,2).forEach(function(rl,rli){
+            doc.text(rl, aColQ, y4+4+(Math.min(aTextLines.length,2)*5)+(rli*4.5));
+          });
+        }
+        // Impact score
+        if (a.impact) {
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold');
+          doc.setTextColor(a.col[0],a.col[1],a.col[2]);
+          doc.text(safe(a.impact), W-M-2, y4+4, {align:'right'});
+        }
+        // Divider
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
+        doc.line(M, y4+rowH, W-M, y4+rowH);
+        y4 += rowH + 2;
+      });
+
+      // Note about action plan
+      // Total estimated impact
+      var highActions = gapActions.filter(function(a){ return a.p==='High'; });
+      var totalLo = 0, totalHi = 0;
+      highActions.forEach(function(a){
+        if (a.impact) {
+          var parts = a.impact.replace('+','').split('-');
+          totalLo += parseInt(parts[0])||0;
+          totalHi += parseInt(parts[1]||parts[0])||0;
+        }
+      });
+      if (totalLo > 0) {
+        var cappedLo = Math.min(totalLo, 16);
+        var cappedHi = Math.min(totalHi, 20);
+        var projMin = Math.min(95, overall + cappedLo);
+        var projMax = Math.min(95, overall + cappedHi);
+        var bandLabel = projMax >= 80 ? 'Leading' : projMax >= 60 ? 'Progressing' : projMax >= 40 ? 'Developing' : 'Starting out';
+        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
+        var impactMsg = 'Completing all High priority actions could improve your score by approximately '+cappedLo+'\u2013'+cappedHi+' points (from '+overall+'% to approximately '+projMin+'\u2013'+projMax+'%), moving you into the "'+bandLabel+'" band. Actual improvement depends on implementation quality and evidence available.';
+        wrapText(impactMsg, M, y4+5, W-2*M, 5, 2);
+        y4 += 6;
+        doc.setFontSize(7.5); doc.setFont(undefined,'italic'); doc.setTextColor(160,158,150);
+        doc.text('Estimated impacts are based on question weighting and assume full implementation. Actual improvement depends on quality of implementation.', M, y4+5);
+        y4 += 10;
+      }
+      y4 += 4;
+      doc.setFillColor(225,245,238);
+      doc.roundedRect(M, y4, W-2*M, 20, 3, 3, 'F');
+      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+      doc.text('Next step', M+6, y4+7);
+      doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
+      wrapText('Review this action plan with your leadership team. Assign an owner and target date for each High priority item. Revisit this assessment in 6-12 months to track progress.', M+6, y4+13, W-2*M-12, 5, 2);
+      footer(5);;
+
+      // ═══════════════════════════════════════════════════
+      // PAGE 5: AI RECOMMENDATIONS
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var y5 = sectionHeader('AI-powered recommendations', 5, 'Personalised guidance generated for '+safe(co));
+
+      // Get AI text from the visible results screen
+      var aiEl = document.getElementById('ai-content');
+      var aiText = '';
+      if (aiEl && aiEl.innerText && !aiEl.classList.contains('ai-loading')) {
+        // Strip any HTML tags
+        aiText = aiEl.innerText.replace(/<[^>]+>/g,'').trim();
+      }
+      if (!aiText || aiText.length < 20) {
+        aiText = 'AI recommendations were not available at the time this report was generated. To access personalised recommendations, please complete the online assessment at myesgcheck.com and allow the AI analysis to load before downloading your report.';
+      }
+
+      doc.setFillColor(240,250,246);
+      doc.setDrawColor(180,225,205); doc.setLineWidth(0.5);
+      doc.roundedRect(M, y5, W-2*M, 10, 3, 3, 'FD');
+      doc.setFillColor(15,110,86);
+      doc.roundedRect(M+3, y5+2, 20, 6, 2, 2, 'F');
+      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('AI', M+13, y5+6, {align:'center'});
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+      doc.text('Personalised for '+safe(co)+' ('+safe(industry)+')', M+27, y5+6.5);
+      y5 += 14;
+
+      // Render AI text with basic markdown formatting
+      var aiLines = aiText.split('\n');
+      doc.setFontSize(8.5); doc.setTextColor(26,25,22);
+      aiLines.forEach(function(line) {
+        if (y5 > H-20) return;
+        var trimmed = line.trim();
+        if (!trimmed) { y5 += 3; return; }
+        // Section headers (## or bold standalone lines)
+        if (/^##\s/.test(trimmed) || /^\*\*[^*]+\*\*$/.test(trimmed)) {
+          var hText = trimmed.replace(/^##\s+/,'').replace(/\*\*/g,'');
+          doc.setFont(undefined,'bold'); doc.setFontSize(9); doc.setTextColor(8,80,65);
+          doc.text(safe(hText), M+3, y5);
+          y5 += 6.5;
+          doc.setFont(undefined,'normal'); doc.setFontSize(8.5); doc.setTextColor(26,25,22);
+        }
+        // Numbered items with bold lead word
+        else if (/^\d+\.\s/.test(trimmed)) {
+          var numMatch = trimmed.match(/^(\d+\.\s+)(\*\*([^*]+)\*\*\.?\s*)?(.*)/);
+          if (numMatch) {
+            doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+            var numPart = safe(numMatch[1] + (numMatch[3]||''));
+            doc.text(numPart, M+3, y5);
+            var xOff = M+3+doc.getTextWidth(numPart)+1;
+            doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+            var restText = safe(numMatch[4]||'');
+            if (restText) {
+              var restLines = doc.splitTextToSize(restText, W-2*M-6-(xOff-M-3));
+              doc.text(restLines[0]||'', xOff, y5);
+              y5 += 5.5;
+              restLines.slice(1).forEach(function(rl){ doc.text(rl, M+6, y5); y5+=5.5; });
+            } else { y5 += 5.5; }
+          }
+        }
+        // Bullet points (-, *, •, or ? which appears when • doesn't render)
+        else if (/^[-*•?]\s/.test(trimmed)) {
+          var bulletText = trimmed.replace(/^[-*•?]\s+/,'');
+          var bulletPlain = bulletText.replace(/\*\*([^*]+)\*\*/g,'$1');
+          var bulletLines = doc.splitTextToSize(safe(bulletPlain), W-2*M-10);
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+          doc.text('\u2022 '+bulletLines[0], M+3, y5);
+          y5 += 5.5;
+          bulletLines.slice(1).forEach(function(bl){ doc.text('  '+bl, M+6, y5); y5+=5.5; });
+        }
+        // Regular line - strip remaining ** markers
+        else {
+          var plainText = trimmed.replace(/\*\*([^*]+)\*\*/g,'$1');
+          var wrappedLines = doc.splitTextToSize(safe(plainText), W-2*M-6);
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+          wrappedLines.forEach(function(wl){ doc.text(wl, M+3, y5); y5+=5.5; });
+        }
+      });
+
+      // Effort vs Impact prioritisation table
+      if (y5 < H - 65) {
+        y5 += 8;
+        doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('Prioritisation guide \u2014 where to start', M, y5);
+        y5 += 7;
+        var eiRows = [
+          ['Supplier Code of Conduct',    'Low',    'High',   'Start now'],
+          ['Carbon baseline estimate',    'Low',    'High',   'Start now'],
+          ['Workforce data tracking',     'Low',    'Medium', 'Quick win'],
+          ['Scope 3 emissions mapping',   'Medium', 'High',   'Month 2-3'],
+          ['Screen top 5 suppliers',      'Medium', 'High',   'Month 2-3'],
+          ['Biodiversity site check',     'Medium', 'Medium', 'Month 3-6'],
+        ];
+        doc.setFillColor(245,244,240); doc.rect(M, y5, W-2*M, 7, 'F');
+        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+        doc.text('ACTION', M+3, y5+5); doc.text('EFFORT', M+100, y5+5);
+        doc.text('IMPACT', M+122, y5+5); doc.text('WHEN', M+145, y5+5);
+        y5 += 9;
+        eiRows.forEach(function(row,ri) {
+          if (y5 > H-18) return;
+          if (ri%2===0){doc.setFillColor(250,250,249);doc.rect(M,y5-2,W-2*M,9,'F');}
+          doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34);
+          doc.text(safe(row[0]),M+3,y5+4);
+          var efCol=row[1]==='Low'?[15,110,86]:[186,117,23], efBg=row[1]==='Low'?[225,245,238]:[250,238,220];
+          doc.setFillColor(efBg[0],efBg[1],efBg[2]); doc.roundedRect(M+98,y5,18,6,1,1,'F');
+          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(efCol[0],efCol[1],efCol[2]);
+          doc.text(row[1],M+107,y5+4.5,{align:'center'});
+          var imCol=row[2]==='High'?[15,110,86]:[130,128,122], imBg=row[2]==='High'?[225,245,238]:[240,238,234];
+          doc.setFillColor(imBg[0],imBg[1],imBg[2]); doc.roundedRect(M+120,y5,18,6,1,1,'F');
+          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(imCol[0],imCol[1],imCol[2]);
+          doc.text(row[2],M+129,y5+4.5,{align:'center'});
+          doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+          doc.text(safe(row[3]),M+145,y5+4.5);
+          doc.setDrawColor(232,230,225); doc.setLineWidth(0.2); doc.line(M,y5+7,W-M,y5+7);
+          y5 += 9;
+        });
+      }
+      footer(6);;
+
+      // ═══════════════════════════════════════════════════
+      // PAGE 6: CATEGORY DEEP DIVE
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var y6 = sectionHeader('Category detail', 6, 'Your responses and scores for each ESG area');
+
+      catScoresArr.forEach(function(cs) {
+        if (y6 > H-50) return;
+        var col = scoreColorArr(cs.score);
+        var cat = cs.cat;
+
+        // Category header row
+        doc.setFillColor(col[0],col[1],col[2]);
+        doc.roundedRect(M, y6, W-2*M, 10, 2, 2, 'F');
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
+        doc.text(safe(cat.label), M+4, y6+7);
+        doc.text((cs.score===null?'N/A':cs.score+'%')+' - '+gradeLabel(cs.score), W-M-4, y6+7, {align:'right'});
+        y6 += 13;
+
+        // Questions answered - full text, no truncation
+        var shown = 0;
+        cat.questions.forEach(function(q, qi) {
+          if (y6 > H-35 || shown >= 5) return;
+          var v = answers[cat.id+'_'+qi];
+          if (!v) return;
+          var qCol = v==='yes'?[15,110,86]:v==='partial'?[186,117,23]:v==='no'?[163,45,45]:[130,128,122];
+          var qLbl = v==='yes'?'YES':v==='partial'?'PARTIAL':v==='no'?'NO':'N/A';
+          var qLines = doc.splitTextToSize(safe(q), W-2*M-24);
+          var qH = Math.max(7, 3 + qLines.length * 4.8);
+          if (y6 + qH > H-20) return;
+          doc.setFillColor(qCol[0],qCol[1],qCol[2]);
+          doc.roundedRect(M, y6, 18, qH-1, 1, 1, 'F');
+          doc.setFontSize(6); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+          doc.text(qLbl, M+9, y6+Math.max(3.5,qH/2), {align:'center'});
+          doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34);
+          qLines.forEach(function(ql, qli) {
+            doc.text(ql, M+21, y6+4.5+(qli*4.8));
+          });
+          doc.setDrawColor(232,230,225); doc.setLineWidth(0.2);
+          doc.line(M, y6+qH+1, W-M, y6+qH+1);
+          y6 += qH + 3;
+          shown++;
+        });
+        y6 += 4;
+      });
+      footer(7);;
+
+      // ═══════════════════════════════════════════════════
+      // PAGE 7: ESRS / VSME ALIGNMENT (useful detail)
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var y7 = sectionHeader('ESRS & VSME framework alignment', 7, 'How your business maps to EU sustainability reporting standards');
+
+      // Intro
+      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      y7 = wrapText('The European Sustainability Reporting Standards (ESRS) are mandatory for large EU companies under CSRD. The VSME standard is the voluntary equivalent designed specifically for SMEs. Understanding where you stand now will prepare you for future requirements and customer/investor requests.', M, y7, W-2*M, 5.5, 4);
+      y7 += 6;
+
+      var esrsData = [
+        { std:'Climate & Energy', stdCode:'ESRS E1 / VSME B3', topic:'Greenhouse gas emissions, energy use, climate risks and targets', catId:'climate', 
+          what:'Covers greenhouse gas emissions (Scope 1, 2, 3), energy consumption, climate risks, and reduction targets.',
+          why:'Increasingly required by banks for lending decisions and by large customers in their supply chain audits.' },
+        { std:'Environment', stdCode:'ESRS E2-E5 / VSME B4-B7', topic:'Pollution prevention, water stewardship, biodiversity and circular economy', catId:'environment',
+          what:'Covers pollution prevention, water stewardship, biodiversity impact, and resource efficiency.',
+          why:'UK and EU procurement increasingly requires suppliers to demonstrate environmental responsibility beyond carbon.' },
+        { std:'People & Workplace', stdCode:'ESRS S1 / VSME B8-B10', topic:'Health & safety, fair pay, working conditions and training', catId:'social',
+          what:'Covers health & safety, fair pay, working conditions, training, and employee rights.',
+          why:'Employee wellbeing is a primary ESG concern for investors and is increasingly tied to contract eligibility.' },
+        { std:'Supply Chain Due Diligence', stdCode:'ESRS S2 / VSME B11', topic:'Supplier human rights, labour standards and ethical procurement', catId:'supply',
+          what:'Covers supplier human rights, labour standards, and ethical procurement.',
+          why:'The CSDDD (Corporate Sustainability Due Diligence Directive) is expected to extend supply chain due diligence expectations to more businesses over time.' },
+        { std:'Business Ethics & Governance', stdCode:'ESRS G1 / VSME B11', topic:'Anti-bribery, data protection, ethics policies and stakeholder engagement', catId:'governance',
+          what:'Covers anti-bribery, data protection, ethics policies, and stakeholder engagement.',
+          why:'Strong governance is the foundation that makes all other ESG disclosures credible to external parties.' },
+      ];
+
+      esrsData.forEach(function(row) {
+        if (y7 > H-40) return;
+        var catEntry = catScoresArr.find(function(x){ return x.cat.id === row.catId; });
+        var sc = catEntry ? catEntry.score : null;
+        var col = scoreColorArr(sc);
+
+        doc.setFillColor(247,246,243);
+        doc.setDrawColor(225,224,220); doc.setLineWidth(0.3);
+        doc.roundedRect(M, y7, W-2*M, 38, 2, 2, 'FD');
+
+        // Standard label
+        doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
+        doc.text(safe(row.std), M+4, y7+7);
+        doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+        doc.text(safe(row.stdCode||''), M+4, y7+12);
+        // Score
+        if (sc !== null) {
+          doc.setFontSize(10); doc.setFont(undefined,'bold');
+          doc.text(sc+'%', W-M-18, y7+7, {align:'right'});
+          scoreTag(sc, W-M-30, y7+11);
+        }
+        // Topic
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(safe(row.topic), M+4, y7+17);
+        // What
+        doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+        var whatLines = doc.splitTextToSize('What: '+safe(row.what), W-2*M-38);
+        doc.text(whatLines[0], M+4, y7+23);
+        doc.setTextColor(15,110,86);
+        var whyLines = doc.splitTextToSize('Why: '+safe(row.why), W-2*M-38);
+        doc.text(whyLines[0], M+4, y7+28);
+        if (whyLines[1]) doc.text(whyLines[1], M+4, y7+33);
+        y7 += 42;
+      });
+      footer(8);;
+
+      // ═══════════════════════════════════════════════════
+      // PAGE 8: NEXT STEPS & RESOURCES
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var y8 = sectionHeader('Next steps & useful resources', 8, 'Practical tools and guidance to help you act on this report');
+
+      // Quick wins box
+      doc.setFillColor(225,245,238);
+      // Pre-calculate height before drawing box
+      var nextSteps = [
+        '1. Share this report with your leadership team. Assign a named owner and target date for each High priority action.',
+        '2. Start with your highest-risk gap this month. Use the action plan and resources in this report — most quick wins require time, not budget.',
+        '3. Retake this assessment in 6-12 months. Your score will improve as you close gaps, and you will have documented evidence of progress to show customers and banks.',
+      ];
+      // Now calculate and draw box with correct height
+      doc.setFontSize(8.5);
+      var nsBoxH = 14;
+      nextSteps.forEach(function(step) {
+        nsBoxH += doc.splitTextToSize(safe(step), W-2*M-14).length * 5.5 + 4;
+      });
+      nsBoxH += 4;
+      doc.setFillColor(225,245,238);
+      doc.roundedRect(M, y8, W-2*M, nsBoxH, 3, 3, 'F');
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+      doc.text('Your immediate next steps', M+6, y8+8);
+      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
+      var nsy = y8+15;
+      nextSteps.forEach(function(step) {
+        nsy = wrapText(safe(step), M+6, nsy, W-2*M-14, 5.5, 4);
+        nsy += 3;
+      });
+      y8 += nsBoxH + 6;
+
+      // Resources table
+      var resources = [
+        { name:'GHG Protocol (free)',         url:'ghgprotocol.org',           use:'START HERE: Calculate Scope 1, 2 and 3 greenhouse gas emissions', grp:'Climate & Carbon' },
+        { name:'DEFRA Emissions Factors',     url:'gov.uk/guidance/greenhouse-gas-reporting-conversion-factors', use:'START HERE: Calculate carbon from energy, travel and fuel', grp:'Climate & Carbon' },
+        { name:'Carbon Trust SME resources',  url:'carbontrust.com',           use:'Practical climate action guidance for smaller businesses', grp:'Climate & Carbon' },
+        { name:'Supply Chain Sustainability School', url:'supplychainschool.co.uk', use:'Free e-learning for SMEs on supply chain ESG', grp:'Supply Chain' },
+        { name:'Modern Slavery Act guidance', url:'gov.uk/guidance/modern-slavery-how-to-report', use:'UK legal requirements for supply chain due diligence', grp:'Supply Chain' },
+        { name:'BSI / ISO 14001',             url:'bsigroup.com',              use:'Environmental management system certification for SMEs', grp:'Environmental' },
+        { name:'EFRAG VSME Standard',         url:'efrag.org',                 use:'Full VSME voluntary reporting standard (free PDF)', grp:'Reporting Frameworks' },
+        { name:'ICO GDPR SME guide',          url:'ico.org.uk',                use:'UK data protection authority guidance for small businesses', grp:'Governance' },
+      ];
+
+      // Consulting upsell box
+            y8 += 4; // consultation CTA removed
+      // Resources table
+      doc.setFillColor(245,244,240);
+      doc.rect(M, y8, W-2*M, 8, 'F');
+      doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+      doc.text('RESOURCE & LINK', M+3, y8+5.5);
+      doc.text('WHAT IT HELPS WITH', M+56, y8+5.5);
+      y8 += 10;
+
+      var lastGrp = '';
+      resources.forEach(function(res, i) {
+        if (y8 > H-20) return;
+        // Group header
+        if (res.grp && res.grp !== lastGrp) {
+          lastGrp = res.grp;
+          doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+          doc.text(safe(res.grp).toUpperCase(), M+3, y8+3);
+          y8 += 6;
+        }
+        if (i%2===0) { doc.setFillColor(250,250,249); doc.rect(M, y8-2, W-2*M, 24, 'F'); }
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+        // Name col: 48mm
+        doc.text(doc.splitTextToSize(safe(res.name),48)[0], M+3, y8+5);
+        // URL — show full, wrap to 2 lines, teal color, add clickable link
+        doc.setFont(undefined,'normal'); doc.setTextColor(29,158,117);
+        var urlLines = doc.splitTextToSize('https://'+safe(res.url), 48);
+        doc.text(urlLines[0], M+3, y8+11);
+        if (urlLines[1]) doc.text(urlLines[1], M+3, y8+16);
+        // Add actual hyperlink (clickable in PDF)
+        try { doc.link(M+3, y8+6, 48, 8, { url: 'https://'+res.url }); } catch(e) {}
+        // Description col: right half
+        doc.setTextColor(40,38,34); doc.setFontSize(8);
+        var descLines = doc.splitTextToSize(safe(res.use), W-2*M-52-4);
+        descLines.slice(0,3).forEach(function(dl, dli) {
+          doc.text(dl, M+56, y8+5+(dli*5.5));
+        });
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
+        doc.line(M, y8+22, W-M, y8+22);
+        y8 += 24;
+      });
+
+      // Back cover strip
+      y8 = Math.max(y8+6, H-32);
+      doc.setFillColor(4,52,44);
+      doc.rect(0, y8, W, H-y8, 'F');
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('myESGcheck.com', M, y8+10);
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(120,160,145);
+      doc.text('Free ESG self-assessment for UK and EU SMEs  |  Aligned with ESRS Set 1 and EFRAG VSME 2024', M, y8+17);
+      doc.setTextColor(79,185,140);
+      doc.text('Retake this assessment annually to track your progress and demonstrate improvement to stakeholders.', M, y8+24);
+      footer(9);;
+
+      // Save
+      var filename = (safe(co).replace(/[^a-zA-Z0-9]/g,'-').toLowerCase() || 'company') + '-esg-report.pdf';
+      doc.save(filename);
+      if (btn) { btn.textContent = 'Downloaded!'; btn.disabled = false; setTimeout(function(){ btn.textContent = 'Download PDF Report'; }, 3000); }
+
+    } catch(err) {
+      console.error('PDF error:', err);
+      if (btn) { btn.textContent = 'Download PDF Report'; btn.disabled = false; }
+      alert('PDF generation failed: ' + err.message);
+    }
+  }, 150);
+}
+
+
+
+
+
+
+
+
+
+</script>
