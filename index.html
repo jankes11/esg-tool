@@ -742,7 +742,8 @@ function formatAI(text) {
   t = t.replace(/^# (.+)$/mg,'<b style="display:block;margin-bottom:.5rem;font-size:1rem">$1</b>');
   t = t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
   t = t.replace(/^(\d+)\. /mg,'<br><b style="color:var(--p)">$1.</b> ');
-  t = t.replace(/^[- ] /mg,'<br>\u2022 ');
+  t = t.replace(/^[-*] /mg,'<br>&#x2022; ');
+  t = t.replace(/^\? /mg,'<br>&#x2022; ');
   t = t.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
   return t;
 }
@@ -1460,6 +1461,9 @@ function generatePDF() {
       ym += 6;
       doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
       doc.text('Your score: '+overall+'% — '+gradeLabel(overall), M, ym);
+      ym += 6;
+      doc.setFontSize(7.5); doc.setTextColor(130,128,122);
+      wrapText('Important: This assessment measures ESG management practices and preparedness. It is not a determination of ESRS, CSRD, or legal compliance.', M, ym, W-2*M, 5, 2);
       footer(2);;
 
       // already handled above
@@ -1946,6 +1950,16 @@ function generatePDF() {
             } else { y5 += 5.5; }
           }
         }
+        // Bullet points (-, *, •, or ? which appears when • doesn't render)
+        else if (/^[-*•?]\s/.test(trimmed)) {
+          var bulletText = trimmed.replace(/^[-*•?]\s+/,'');
+          var bulletPlain = bulletText.replace(/\*\*([^*]+)\*\*/g,'$1');
+          var bulletLines = doc.splitTextToSize(safe(bulletPlain), W-2*M-10);
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+          doc.text('\u2022 '+bulletLines[0], M+3, y5);
+          y5 += 5.5;
+          bulletLines.slice(1).forEach(function(bl){ doc.text('  '+bl, M+6, y5); y5+=5.5; });
+        }
         // Regular line - strip remaining ** markers
         else {
           var plainText = trimmed.replace(/\*\*([^*]+)\*\*/g,'$1');
@@ -2103,7 +2117,7 @@ function generatePDF() {
       var resources = [
         { name:'GHG Protocol (free)',         url:'ghgprotocol.org',           use:'Calculate your Scope 1, 2 and 3 greenhouse gas emissions' },
         { name:'Supply Chain Sustainability School', url:'supplychainschool.co.uk', use:'Free e-learning for SMEs on supply chain ESG' },
-        { name:'DEFRA Emissions Factors',     url:'gov.uk/government/collections/government-conversion-factors-for-company-reporting', use:'Free UK government tool for calculating carbon from energy and travel' },
+        { name:'DEFRA Emissions Factors',     url:'gov.uk/guidance/greenhouse-gas-reporting-conversion-factors', use:'Free UK government tool for calculating carbon from energy and travel' },
         { name:'EFRAG VSME Standard',         url:'efrag.org',                 use:'Download the full VSME voluntary reporting standard (free PDF)' },
         { name:'BSI / ISO 14001',             url:'bsigroup.com',              use:'Environmental management system certification for SMEs' },
         { name:'Carbon Trust SME resources',  url:'carbontrust.com',           use:'Practical climate action guidance for smaller businesses' },
