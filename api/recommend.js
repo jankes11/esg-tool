@@ -114,10 +114,12 @@ ${partialList || 'None identified'}
 
 ${industryContext}
 
+The category scores above show where this business is weakest. Focus your recommendations on the lowest-scoring categories first — not just on climate or environment if those are not the weakest areas.
+
 Write a short, practical improvement plan. Three sections:
 
 ## Quick wins (next 1–3 months)
-2–3 specific, concrete actions targeting their actual gaps. Use industry-specific tools, frameworks or terminology where relevant. Do NOT suggest vague actions — be specific to their industry and gaps.
+2–3 specific, concrete actions targeting their actual gaps. Prioritise actions in the lowest-scoring category. Use industry-specific tools, frameworks or terminology where relevant. Do NOT suggest vague actions — be specific to their industry and gaps.
 
 ## Bigger priorities (next 6–12 months)
 2–3 medium-term actions realistic for a ${size || 'small'} business in ${industry || 'their sector'}.
@@ -130,7 +132,10 @@ RULES:
 - Do not suggest specific year targets (e.g. "net zero by 2040") — suggest "set a measurable target" instead
 - Do not use phrases like "top performers", "industry leaders", "sector average"
 - Be specific to the industry — generic advice is less useful than sector-specific guidance
-- Keep under 230 words. Be direct, practical, encouraging.`;
+- Prioritise the lowest-scoring category — if Supply Chain scores 43%, include at least one specific supply chain action
+- Do not default to climate/environment if other categories score lower
+- For PAS 2080: reference principles not technical sections (too advanced for small firms)
+- Keep under 250 words. Be direct, practical, encouraging.`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
