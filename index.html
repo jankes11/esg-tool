@@ -1442,7 +1442,7 @@ function generatePDF() {
 
       var bands = [
         [80,100,'Leading','Strong performance. You can confidently respond to customer ESG requests and most supplier audits.',[15,110,86],[225,245,238]],
-        [60,79,'Progressing','Above average. You will pass most basic ESG checks. Some gaps remain for larger customers.',[29,158,117],[220,240,232]],
+        [60,79,'Progressing','Above average. You are likely to satisfy most basic customer ESG questionnaires. Some gaps remain for larger customers.',[29,158,117],[220,240,232]],
         [40,59,'Developing','Typical for SMEs starting their ESG journey. Key gaps may affect procurement eligibility.',[186,117,23],[250,238,220]],
         [20,39,'Starting out','Significant gaps. Likely to struggle with ESG questions from banks, investors, or larger customers.',[153,60,29],[248,232,220]],
         [0,19,'Needs action','Critical gaps present. ESG requirements from customers and regulators will be difficult to meet.',[163,45,45],[252,235,235]],
@@ -1530,8 +1530,8 @@ function generatePDF() {
         '';
       var scoreDesc = scorePrefix + 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" band for this self-assessment. ';
       if (overall < 40) scoreDesc += 'At this score, there are significant ESG gaps to address. Most quick wins cost nothing but time and a written document.';
-      else if (overall < 60) scoreDesc += 'At this score, you will pass basic ESG checks from customers and banks, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
-      else if (overall < 80) scoreDesc += 'You are performing well. At this score, you can confidently respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
+      else if (overall < 60) scoreDesc += 'At this score, you are likely to satisfy many basic customer ESG questionnaires, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
+      else if (overall < 80) scoreDesc += 'You are performing well. At this score, you are well-placed to respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
       else scoreDesc += 'You are performing at a leading level. Your ESG performance is a genuine competitive advantage for winning contracts and demonstrating responsibility to customers and investors.';
       wrapText(scoreDesc, M+6, sb_y+15, W-2*M-12, 5.5, 3);
       footer(3);;
@@ -2012,7 +2012,7 @@ function generatePDF() {
           why:'Employee wellbeing is a primary ESG concern for investors and is increasingly tied to contract eligibility.' },
         { std:'ESRS S2 / VSME B11', topic:'Supply chain workers & due diligence', catId:'supply',
           what:'Covers supplier human rights, labour standards, and ethical procurement.',
-          why:'CSDDD (Corporate Sustainability Due Diligence Directive) will extend supply chain obligations to more businesses.' },
+          why:'The CSDDD (Corporate Sustainability Due Diligence Directive) is expected to extend supply chain due diligence expectations to more businesses over time.' },
         { std:'ESRS G1 / VSME B11', topic:'Business conduct & governance', catId:'governance',
           what:'Covers anti-bribery, data protection, ethics policies, and stakeholder engagement.',
           why:'Strong governance is the foundation that makes all other ESG disclosures credible to external parties.' },
