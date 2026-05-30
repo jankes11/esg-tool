@@ -1718,12 +1718,13 @@ function generatePDF() {
         doc.text(sb.label, sx+8, y3+19);
       });
 
-      // Gap categories sentence
-      var gapsByCat2 = {};
-      gaps.forEach(function(g){ gapsByCat2[g.cat] = (gapsByCat2[g.cat]||0)+1; });
-      var sortedGC = Object.keys(gapsByCat2).sort(function(a,b){ return gapsByCat2[b]-gapsByCat2[a]; });
-      if (sortedGC.length >= 1) {
-        var gcSentence = 'Most gaps are in '+safe(sortedGC[0])+(sortedGC[1]?' and '+safe(sortedGC[1]):'')+'  —  these are your highest priority areas.';
+      // Gap insight — based on LOWEST SCORE (not gap count)
+      var sortedByScore = catScoresArr
+        .filter(function(x){ return x.score !== null; })
+        .sort(function(a,b){ return a.score - b.score; });
+      if (sortedByScore.length >= 2) {
+        var s1 = sortedByScore[0], s2 = sortedByScore[1];
+        var gcSentence = 'Biggest improvement opportunity: '+safe(s1.cat.label)+' ('+s1.score+'%) and '+safe(s2.cat.label)+' ('+s2.score+'%) — focus here first.';
         doc.setFontSize(8.5); doc.setFont(undefined,'italic'); doc.setTextColor(92,90,85);
         doc.text(safe(gcSentence), M, y3+26);
       }
@@ -1875,12 +1876,14 @@ function generatePDF() {
       // Col widths: Priority=26, Area=42, Action=W-2*M-26-42-8=approx 96mm
       var aColP=M, aColA=M+26, aColQ=M+64, aColQW=W-M-64-2;
 
+      var aColI = W-M-20; // impact column
       doc.setFillColor(245,244,240);
       doc.rect(M, y4, W-2*M, 7, 'F');
       doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
       doc.text('PRIORITY', aColP+2, y4+5);
       doc.text('AREA', aColA+2, y4+5);
       doc.text('ACTION REQUIRED', aColQ+2, y4+5);
+      doc.text('IMPACT', aColI, y4+5, {align:'right'});
       y4 += 9;
 
       // Convert questions to action statements
@@ -2003,12 +2006,32 @@ function generatePDF() {
         }
         return 'High';
       }
+      // Pre-calculate category weighted totals for score impact
+      var catWeightTotals = {};
+      CATEGORIES.forEach(function(cat) {
+        var wts = cat.weights || cat.questions.map(function(){ return 1; });
+        catWeightTotals[cat.label] = wts.reduce(function(a,b){ return a+b; }, 0);
+      });
+      function estimateImpact(q, catLabel) {
+        var cat2 = CATEGORIES.find(function(c2){ return c2.label === catLabel; });
+        if (!cat2) return null;
+        var qi2 = cat2.questions.indexOf(q);
+        var w2 = (cat2.weights && cat2.weights[qi2]) ? cat2.weights[qi2] : 1;
+        var total2 = catWeightTotals[catLabel] || cat2.questions.length;
+        var catImpact = (w2 / total2) * 20;
+        var lo = Math.max(1, Math.round(catImpact * 0.7));
+        var hi = Math.round(catImpact * 1.2);
+        if (lo >= hi) hi = lo + 1;
+        return '+'+lo+'-'+hi+' pts';
+      }
+
       var gapActions = gaps.map(function(x){
         var pri = getPriority(x.q);
         return Object.assign({
           p: pri,
           col: pri==='High'?[163,45,45]:[186,117,23],
-          bg: pri==='High'?[252,235,235]:[250,238,220]
+          bg: pri==='High'?[252,235,235]:[250,238,200],
+          impact: estimateImpact(x.q, x.cat)
         }, x);
       });
       // Sort: High priority first, then by category score (lowest scoring categories first)
@@ -2059,6 +2082,12 @@ function generatePDF() {
             doc.text(rl, aColQ, y4+4+(Math.min(aTextLines.length,2)*5)+(rli*4.5));
           });
         }
+        // Impact score
+        if (a.impact) {
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold');
+          doc.setTextColor(a.col[0],a.col[1],a.col[2]);
+          doc.text(safe(a.impact), W-M-2, y4+4, {align:'right'});
+        }
         // Divider
         doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
         doc.line(M, y4+rowH, W-M, y4+rowH);
@@ -2066,7 +2095,24 @@ function generatePDF() {
       });
 
       // Note about action plan
-      y4 += 6;
+      // Total estimated impact
+      var highActions = gapActions.filter(function(a){ return a.p==='High'; });
+      var totalLo = 0, totalHi = 0;
+      highActions.forEach(function(a){
+        if (a.impact) {
+          var parts = a.impact.replace('+','').split('-');
+          totalLo += parseInt(parts[0])||0;
+          totalHi += parseInt(parts[1]||parts[0])||0;
+        }
+      });
+      if (totalLo > 0) {
+        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
+        var projScore = Math.min(100, overall + Math.round((totalLo+totalHi)/2));
+        var impactMsg = 'Completing all High priority actions could improve your score by approximately '+totalLo+'\u2013'+totalHi+' points (from '+overall+'% to approximately '+projScore+'%).';
+        wrapText(impactMsg, M, y4+5, W-2*M, 5, 2);
+        y4 += 14;
+      }
+      y4 += 4;
       doc.setFillColor(225,245,238);
       doc.roundedRect(M, y4, W-2*M, 20, 3, 3, 'F');
       doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
@@ -2303,14 +2349,14 @@ function generatePDF() {
 
       // Resources table
       var resources = [
-        { name:'GHG Protocol (free)',         url:'ghgprotocol.org',           use:'Calculate your Scope 1, 2 and 3 greenhouse gas emissions' },
-        { name:'Supply Chain Sustainability School', url:'supplychainschool.co.uk', use:'Free e-learning for SMEs on supply chain ESG' },
-        { name:'DEFRA Emissions Factors',     url:'gov.uk/guidance/greenhouse-gas-reporting-conversion-factors', use:'Free UK government tool for calculating carbon from energy and travel' },
-        { name:'EFRAG VSME Standard',         url:'efrag.org',                 use:'Download the full VSME voluntary reporting standard (free PDF)' },
-        { name:'BSI / ISO 14001',             url:'bsigroup.com',              use:'Environmental management system certification for SMEs' },
-        { name:'Carbon Trust SME resources',  url:'carbontrust.com',           use:'Practical climate action guidance for smaller businesses' },
-        { name:'Modern Slavery Act guidance', url:'gov.uk/guidance/modern-slavery-how-to-report', use:'UK government guidance on supply chain obligations' },
-        { name:'ICO GDPR SME guide',          url:'ico.org.uk',                use:'UK data protection authority guidance for small businesses' },
+        { name:'GHG Protocol (free)',         url:'ghgprotocol.org',           use:'START HERE: Calculate Scope 1, 2 and 3 greenhouse gas emissions', grp:'Climate & Carbon' },
+        { name:'DEFRA Emissions Factors',     url:'gov.uk/guidance/greenhouse-gas-reporting-conversion-factors', use:'START HERE: Calculate carbon from energy, travel and fuel', grp:'Climate & Carbon' },
+        { name:'Carbon Trust SME resources',  url:'carbontrust.com',           use:'Practical climate action guidance for smaller businesses', grp:'Climate & Carbon' },
+        { name:'Supply Chain Sustainability School', url:'supplychainschool.co.uk', use:'Free e-learning for SMEs on supply chain ESG', grp:'Supply Chain' },
+        { name:'Modern Slavery Act guidance', url:'gov.uk/guidance/modern-slavery-how-to-report', use:'UK legal requirements for supply chain due diligence', grp:'Supply Chain' },
+        { name:'BSI / ISO 14001',             url:'bsigroup.com',              use:'Environmental management system certification for SMEs', grp:'Environmental' },
+        { name:'EFRAG VSME Standard',         url:'efrag.org',                 use:'Full VSME voluntary reporting standard (free PDF)', grp:'Reporting Frameworks' },
+        { name:'ICO GDPR SME guide',          url:'ico.org.uk',                use:'UK data protection authority guidance for small businesses', grp:'Governance' },
       ];
 
       // Consulting upsell box
@@ -2323,8 +2369,16 @@ function generatePDF() {
       doc.text('WHAT IT HELPS WITH', M+56, y8+5.5);
       y8 += 10;
 
+      var lastGrp = '';
       resources.forEach(function(res, i) {
         if (y8 > H-20) return;
+        // Group header
+        if (res.grp && res.grp !== lastGrp) {
+          lastGrp = res.grp;
+          doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+          doc.text(safe(res.grp).toUpperCase(), M+3, y8+3);
+          y8 += 6;
+        }
         if (i%2===0) { doc.setFillColor(250,250,249); doc.rect(M, y8-2, W-2*M, 24, 'F'); }
         doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
         // Name col: 48mm
