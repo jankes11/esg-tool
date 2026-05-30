@@ -1293,7 +1293,8 @@ function generatePDF() {
       doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
       doc.text(safe(co), M, 198);
       doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      doc.text('Industry: '+safe(industry)+'   |   Employees: '+safe(size), M, 205);
+      var sizeLabel = safe(size) && safe(size) !== 'Not disclosed' ? '   |   Employees: '+safe(size) : '';
+      doc.text('Industry: '+safe(industry)+sizeLabel, M, 205);
       doc.text('Assessment date: '+safe(coDate)+'   |   Valid for: 12 months', M, 211);
       doc.setFontSize(8); doc.setTextColor(160,158,150);
       doc.text('Prepared by myESGcheck.com  |  Self-assessment tool aligned with ESRS Set 1 and EFRAG VSME 2024', M, 218);
@@ -1359,8 +1360,34 @@ function generatePDF() {
       doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
       doc.text('Score formula', M+6, ym+8);
       doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
-      doc.text('Category score = weighted sum of points / weighted count of applicable questions x 100', M+6, ym+14);
-      doc.text('Critical questions (H&S, anti-bribery, supply chain) carry higher weight than lower-risk topics.', M+6, ym+20);
+      doc.text('Category score = weighted sum of points / weighted count of applicable questions x 100', M+6, ym+12);
+      doc.text('Overall score = average of all 5 weighted category scores (N/A answers excluded from calculation)', M+6, ym+18);
+      ym += 30;
+
+      // Weight bands table
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text('Question weighting', M, ym); ym += 7;
+      var wBands = [
+        ['Critical (weight x3)', 'Questions where failure creates immediate legal, financial, or procurement risk.', 'H&S policy, Anti-bribery, Supply chain forced labour checks'],
+        ['Important (weight x2)', 'Questions strongly aligned to ESRS/VSME disclosure requirements.', 'Emissions baseline, Climate risk, Grievance mechanism, GDPR, ESG owner'],
+        ['Standard (weight x1)', 'Good practice questions relevant to most SMEs.', 'Waste tracking, Staff training, Stakeholder engagement, Supplier selection'],
+        ['Lower weight (x0.5)', 'Questions where No is not necessarily an ESG failure for many SMEs.', 'Community engagement, Inclusive procurement'],
+      ];
+      var wColors = [[163,45,45],[186,117,23],[15,110,86],[130,128,122]];
+      var wBgs = [[252,235,235],[250,238,220],[225,245,238],[240,238,234]];
+      wBands.forEach(function(wb, wi) {
+        if (ym > H-30) return;
+        doc.setFillColor(wBgs[wi][0],wBgs[wi][1],wBgs[wi][2]);
+        doc.roundedRect(M, ym, W-2*M, 20, 2, 2, 'F');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(wColors[wi][0],wColors[wi][1],wColors[wi][2]);
+        doc.text(safe(wb[0]), M+4, ym+7);
+        doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52); doc.setFontSize(7.5);
+        doc.text(safe(wb[1]), M+4, ym+13);
+        doc.setTextColor(130,128,122); doc.setFontSize(7);
+        doc.text('Examples: '+safe(wb[2]), M+4, ym+18);
+        ym += 23;
+      });
+      ym += 0; // end weight bands
       ym += 30;
 
       // Score bands table
@@ -1445,7 +1472,7 @@ function generatePDF() {
       doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
       doc.text('What this score means for your business', M+6, sb_y+8);
       doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      var scoreDesc = 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" category for this self-assessment. ';
+      var scoreDesc = 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" band for this self-assessment. ';
       if (overall < 40) scoreDesc += 'At this score, most businesses struggle to pass ESG questionnaires from Tier 1 contractors, banks, or large customers. The gap is closable — most of the quick wins cost nothing but time.';
       else if (overall < 60) scoreDesc += 'At this score, you will pass basic ESG checks from customers and banks, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
       else if (overall < 80) scoreDesc += 'You are performing well. At this score, you can confidently respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
@@ -1518,7 +1545,72 @@ function generatePDF() {
           fy += fRowH;
         });
       }
-      footer(4);;
+      // Evidence Maturity table
+      if (fy < H - 60) {
+        fy += 6;
+        doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('Evidence maturity', M, fy); fy += 6;
+        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+        doc.text('How well-documented is your ESG practice in each area?', M, fy); fy += 8;
+
+        // Build evidence maturity from answers
+        var evidenceRows = [];
+        var criticalQMap = [
+          { label:'H&S policy', catId:'social', qi:0 },
+          { label:'Anti-bribery policy', catId:'governance', qi:1 },
+          { label:'Supply chain due diligence', catId:'supply', qi:0 },
+          { label:'Greenhouse gas baseline', catId:'climate', qi:0 },
+          { label:'Climate risk assessment', catId:'climate', qi:2 },
+          { label:'GDPR / data protection', catId:'governance', qi:4 },
+          { label:'ESG owner (named person)', catId:'governance', qi:2 },
+          { label:'Grievance mechanism', catId:'social', qi:4 },
+          { label:'Workforce metrics', catId:'social', qi:6 },
+          { label:'Supplier ethics clauses', catId:'supply', qi:2 },
+        ];
+
+        // Table header
+        doc.setFillColor(245,244,240);
+        doc.rect(M, fy, W-2*M, 7, 'F');
+        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+        doc.text('ESG AREA', M+4, fy+5);
+        doc.text('CURRENT STATUS', M+85, fy+5);
+        doc.text('PRIORITY', W-M-22, fy+5, {align:'right'});
+        fy += 9;
+
+        criticalQMap.forEach(function(item, idx) {
+          if (fy > H-25) return;
+          var ans = answers[item.catId+'_'+item.qi];
+          var statusLabel, statusCol, statusBg, priority, priorityCol, priorityBg;
+          if (ans === 'yes') {
+            statusLabel='Documented'; statusCol=[15,110,86]; statusBg=[225,245,238];
+            priority='Maintain'; priorityCol=[130,128,122]; priorityBg=[240,238,234];
+          } else if (ans === 'partial') {
+            statusLabel='Partial / informal'; statusCol=[186,117,23]; statusBg=[250,238,220];
+            priority='Formalise'; priorityCol=[186,117,23]; priorityBg=[250,238,220];
+          } else if (ans === 'no') {
+            statusLabel='Not in place'; statusCol=[163,45,45]; statusBg=[252,235,235];
+            priority='Act now'; priorityCol=[163,45,45]; priorityBg=[252,235,235];
+          } else {
+            statusLabel='Not applicable'; statusCol=[130,128,122]; statusBg=[240,238,234];
+            priority='-'; priorityCol=[130,128,122]; priorityBg=[240,238,234];
+          }
+          if (idx%2===0) { doc.setFillColor(252,252,251); doc.rect(M, fy-2, W-2*M, 11, 'F'); }
+          doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+          doc.text(safe(item.label), M+4, fy+5);
+          doc.setFillColor(statusBg[0],statusBg[1],statusBg[2]);
+          doc.roundedRect(M+83, fy, 52, 7, 1, 1, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(statusCol[0],statusCol[1],statusCol[2]);
+          doc.text(statusLabel, M+85, fy+5);
+          doc.setFillColor(priorityBg[0],priorityBg[1],priorityBg[2]);
+          doc.roundedRect(W-M-32, fy, 30, 7, 1, 1, 'F');
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(priorityCol[0],priorityCol[1],priorityCol[2]);
+          doc.text(priority, W-M-17, fy+5, {align:'center'});
+          doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
+          doc.line(M, fy+9, W-M, fy+9);
+          fy += 12;
+        });
+      }
+      footer(4);
 
       // ═══════════════════════════════════════════════════
       // PAGE 4: ACTION PLAN (full detail)
@@ -1791,24 +1883,28 @@ function generatePDF() {
         doc.text((cs.score===null?'N/A':cs.score+'%')+' - '+gradeLabel(cs.score), W-M-4, y6+7, {align:'right'});
         y6 += 13;
 
-        // Questions answered
+        // Questions answered - full text, no truncation
         var shown = 0;
         cat.questions.forEach(function(q, qi) {
-          if (y6 > H-28 || shown >= 4) return;
+          if (y6 > H-35 || shown >= 5) return;
           var v = answers[cat.id+'_'+qi];
           if (!v) return;
           var qCol = v==='yes'?[15,110,86]:v==='partial'?[186,117,23]:v==='no'?[163,45,45]:[130,128,122];
           var qLbl = v==='yes'?'YES':v==='partial'?'PARTIAL':v==='no'?'NO':'N/A';
-          // Answer badge
+          var qLines = doc.splitTextToSize(safe(q), W-2*M-24);
+          var qH = Math.max(7, 3 + qLines.length * 4.8);
+          if (y6 + qH > H-20) return;
           doc.setFillColor(qCol[0],qCol[1],qCol[2]);
-          doc.roundedRect(M, y6, 18, 5, 1, 1, 'F');
-          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(qCol[0],qCol[1],qCol[2]);
-          doc.text(qLbl, M+9, y6+3.7, {align:'center'});
-          // Question text
-          doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
-          var qLine = doc.splitTextToSize(safe(q), W-2*M-22)[0];
-          doc.text(qLine, M+21, y6+3.7);
-          y6 += 7;
+          doc.roundedRect(M, y6, 18, qH-1, 1, 1, 'F');
+          doc.setFontSize(6); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+          doc.text(qLbl, M+9, y6+Math.max(3.5,qH/2), {align:'center'});
+          doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34);
+          qLines.forEach(function(ql, qli) {
+            doc.text(ql, M+21, y6+4.5+(qli*4.8));
+          });
+          doc.setDrawColor(232,230,225); doc.setLineWidth(0.2);
+          doc.line(M, y6+qH+1, W-M, y6+qH+1);
+          y6 += qH + 3;
           shown++;
         });
         y6 += 4;
