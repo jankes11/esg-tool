@@ -1094,6 +1094,18 @@ document.addEventListener('keydown', function(e) {
    Designed to produce a genuinely useful 8-page ESG report.
 ──────────────────────────────────────────────────────────── */
 
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
+/* ── PDF BUILDER — ESG Report for SMEs ──────────────────────
+   Clean rewrite. No emoji in PDF (use text symbols instead).
+   All text uses ASCII/Latin-1 safe characters.
+   Designed to produce a genuinely useful 8-page ESG report.
+──────────────────────────────────────────────────────────── */
+
 function generatePDF() {
   if (!_pdfUnlocked) { alert('Please verify your payment first.'); return; }
   var btn = document.getElementById('pdf-btn');
@@ -1178,7 +1190,7 @@ function generatePDF() {
         doc.setFontSize(7.5); doc.setFont(undefined,'normal');
         doc.setTextColor(160,158,150);
         doc.text('myESGcheck.com  |  ESRS/VSME 2024 aligned  |  Self-assessment tool — not formal ESG assurance', M, H-4);
-        doc.text('Page '+pageNum+' / 8', W-M, H-4, {align:'right'});
+        doc.text('Page '+pageNum+' / 9', W-M, H-4, {align:'right'});
         doc.setTextColor(26,25,22);
       }
       function sectionHeader(title, section, subtitle) {
@@ -1261,11 +1273,12 @@ function generatePDF() {
       doc.setFillColor(255,255,255);
       doc.rect(0, 185, W, H-185, 'F');
       doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text(safe(co), M, 200);
+      doc.text(safe(co), M, 198);
       doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      doc.text('Industry: '+safe(industry)+'   |   Size: '+safe(size)+'   |   Date: '+safe(coDate), M, 208);
+      doc.text('Industry: '+safe(industry)+'   |   Employees: '+safe(size), M, 205);
+      doc.text('Assessment date: '+safe(coDate)+'   |   Valid for: 12 months', M, 211);
       doc.setFontSize(8); doc.setTextColor(160,158,150);
-      doc.text('Prepared using myESGcheck.com — Free ESG Self-Assessment Tool for UK and EU SMEs', M, 216);
+      doc.text('Prepared by myESGcheck.com  |  Self-assessment tool aligned with ESRS Set 1 and EFRAG VSME 2024', M, 218);
       // ESRS seal
       doc.setDrawColor(15,110,86); doc.setLineWidth(1.5);
       doc.circle(W-28, 202, 14, 'S');
@@ -1273,13 +1286,95 @@ function generatePDF() {
       doc.text('ESRS', W-28, 198, {align:'center'});
       doc.text('ALIGNED', W-28, 203, {align:'center'});
       doc.text('2024', W-28, 208, {align:'center'});
-      footer(1);
+      footer(1);;
 
       // ═══════════════════════════════════════════════════
-      // PAGE 2: SCORE OVERVIEW
+      // PAGE 2: HOW SCORING WORKS (methodology)
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y2 = sectionHeader('Score overview', 1, 'How your business performed across all 5 ESG areas');
+      var ym = sectionHeader('How your score is calculated', 1, 'Transparent scoring methodology — so you understand exactly what your results mean');
+
+      // Scoring table
+      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+      ym = wrapText('Each of the '+CATEGORIES.reduce(function(a,c2){return a+c2.questions.length;},0)+' questions in this assessment is scored on a simple 0-1 scale. Your category scores and overall score are calculated as weighted averages of your answers within each area.', M, ym, W-2*M, 5.5, 3);
+      ym += 8;
+
+      // Answer table
+      var tHeaders = ['Your answer','Points awarded','What it means'];
+      var tRows = [
+        ['Yes — fully in place','1.0 point','This practice is established and active in your business'],
+        ['Partial — in progress','0.5 points','You have started but not fully implemented this practice'],
+        ['No — not yet started','0.0 points','This is a gap requiring action'],
+        ['N/A — not applicable','Excluded','This question does not apply to your business type or size'],
+      ];
+      var tColW = [52, 38, W-2*M-52-38-4];
+      var tX = [M, M+54, M+94];
+
+      // Table header
+      doc.setFillColor(4,52,44);
+      doc.rect(M, ym, W-2*M, 9, 'F');
+      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      tHeaders.forEach(function(h,i){ doc.text(h, tX[i]+3, ym+6); });
+      ym += 11;
+
+      tRows.forEach(function(row, ri) {
+        if (ri%2===0) { doc.setFillColor(250,250,249); } else { doc.setFillColor(255,255,255); }
+        doc.rect(M, ym-2, W-2*M, 11, 'F');
+        doc.setFontSize(8); doc.setFont(undefined, ri===0||ri===1?'bold':'normal');
+        doc.setTextColor(ri===2?[163,45,45]:ri===1?[186,117,23]:ri===0?[15,110,86]:[130,128,122]);
+        doc.text(safe(row[0]), tX[0]+3, ym+5);
+        doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(safe(row[1]), tX[1]+3, ym+5);
+        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+        doc.text(safe(row[2]), tX[2]+3, ym+5);
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
+        doc.line(M, ym+9, W-2*M+M, ym+9);
+        ym += 12;
+      });
+
+      ym += 8;
+
+      // Formula box
+      doc.setFillColor(225,245,238);
+      doc.roundedRect(M, ym, W-2*M, 22, 3, 3, 'F');
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+      doc.text('Score formula', M+6, ym+8);
+      doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
+      doc.text('Category score = (sum of points in category) / (number of applicable questions) x 100', M+6, ym+14);
+      doc.text('Overall score = average of all 5 category scores (excluding N/A questions)', M+6, ym+20);
+      ym += 30;
+
+      // Score bands table
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text('Score bands', M, ym);
+      ym += 8;
+
+      var bands = [
+        [80,100,'Leading','Top 20% of SMEs. You can confidently respond to customer ESG requests and most audits.',[15,110,86],[225,245,238]],
+        [60,79,'Progressing','Above average. You will pass most basic ESG checks. Some gaps remain for larger customers.',[29,158,117],[220,240,232]],
+        [40,59,'Developing','Typical for SMEs starting their ESG journey. Key gaps may affect procurement eligibility.',[186,117,23],[250,238,220]],
+        [20,39,'Starting out','Significant gaps. Likely to struggle with ESG questions from banks, investors, or Tier 1 customers.',[153,60,29],[248,232,220]],
+        [0,19,'Needs action','Critical gaps present. ESG requirements from customers and regulators will be difficult to meet.',[163,45,45],[252,235,235]],
+      ];
+      bands.forEach(function(band, bi) {
+        doc.setFillColor(band[5][0],band[5][1],band[5][2]);
+        doc.roundedRect(M, ym, W-2*M, 14, 2, 2, 'F');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(band[4][0],band[4][1],band[4][2]);
+        doc.text(band[0]+'-'+band[1]+'%  '+band[2], M+4, ym+9);
+        doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
+        doc.text(safe(band[3]), M+52, ym+9);
+        ym += 16;
+      });
+
+      ym += 6;
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+      doc.text('Your score: '+overall+'% — '+gradeLabel(overall), M, ym);
+      footer(2);;
+
+      // already handled above
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var y2 = sectionHeader('Score overview', 2, 'How your business performed across all 5 ESG areas');
 
       // Ring chart
       var cx=M+22, cy=y2+36, r=20;
@@ -1331,19 +1426,19 @@ function generatePDF() {
       doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
       doc.text('What this score means for your business', M+6, sb_y+8);
       doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      var scoreDesc = 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" category. ';
-      if (overall < 40) scoreDesc += 'This is a starting point, not a final verdict. Most SMEs in your position have significant room to improve quickly with targeted action.';
-      else if (overall < 60) scoreDesc += 'You have solid foundations in some areas. Focused effort on your gaps can move you to "Progressing" within 12 months.';
-      else if (overall < 80) scoreDesc += 'You are ahead of most SMEs in your sector. Formalising your existing practices and closing remaining gaps will move you to "Leading".';
-      else scoreDesc += 'You are performing at a leading level. Focus on maintaining standards, annual reassessment, and external disclosure.';
+      var scoreDesc = 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" category for this self-assessment. ';
+      if (overall < 40) scoreDesc += 'At this score, most businesses struggle to pass ESG questionnaires from Tier 1 contractors, banks, or large customers. The gap is closable — most of the quick wins cost nothing but time.';
+      else if (overall < 60) scoreDesc += 'At this score, you will pass basic ESG checks from customers and banks, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now puts you ahead of most SME competitors.';
+      else if (overall < 80) scoreDesc += 'You are ahead of most SMEs in your sector. At this score, you can confidently respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
+      else scoreDesc += 'You are performing at a leading level — top 20% of SMEs. Your ESG performance is a genuine competitive advantage for winning contracts and attracting investment.';
       wrapText(scoreDesc, M+6, sb_y+15, W-2*M-12, 5.5, 3);
-      footer(2);
+      footer(3);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 3: KEY FINDINGS — Gaps & Strengths
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y3 = sectionHeader('Key findings', 2, 'What the assessment revealed about your current ESG performance');
+      var y3 = sectionHeader('Key findings', 3, 'What the assessment revealed about your current ESG performance');
 
       // Stats row
       var statBoxes = [
@@ -1371,13 +1466,17 @@ function generatePDF() {
           if (fy > H-30) return;
           doc.setFillColor(252,235,235);
           doc.setDrawColor(240,192,192); doc.setLineWidth(0.3);
-          doc.roundedRect(M, fy, W-2*M, 16, 2, 2, 'FD');
+          var fqCheck2 = doc.splitTextToSize(safe(f.q), W-2*M-14);
+          var fCardH2 = fqCheck2.length > 1 ? 22 : 17;
+          doc.roundedRect(M, fy, W-2*M, fCardH2, 2, 2, 'FD');
           doc.setFillColor(163,45,45); doc.circle(M+5, fy+8, 2, 'F');
           doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85);
           doc.text(safe(f.cat), M+10, fy+6);
-          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(8);
-          doc.text(doc.splitTextToSize(safe(f.q), W-2*M-14)[0], M+10, fy+12);
-          fy += 19;
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(7.5);
+          var fqLines = doc.splitTextToSize(safe(f.q), W-2*M-14);
+          fqLines.slice(0,2).forEach(function(fl,fli){ doc.text(fl, M+10, fy+11+(fli*4.5)); });
+          var fRowH = fqCheck2 && fqCheck2.length > 1 ? 25 : 20;
+          fy += fRowH;
         });
         fy += 4;
       }
@@ -1394,18 +1493,20 @@ function generatePDF() {
           doc.setFillColor(186,117,23); doc.circle(M+5, fy+8, 2, 'F');
           doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(92,90,85);
           doc.text(safe(f.cat), M+10, fy+6);
-          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(8);
-          doc.text(doc.splitTextToSize(safe(f.q), W-2*M-14)[0], M+10, fy+12);
-          fy += 19;
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(7.5);
+          var fqLines = doc.splitTextToSize(safe(f.q), W-2*M-14);
+          fqLines.slice(0,2).forEach(function(fl,fli){ doc.text(fl, M+10, fy+11+(fli*4.5)); });
+          var fRowH = fqCheck2 && fqCheck2.length > 1 ? 25 : 20;
+          fy += fRowH;
         });
       }
-      footer(3);
+      footer(4);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 4: ACTION PLAN (full detail)
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y4 = sectionHeader('Prioritised action plan', 3, 'Your top actions ranked by impact and urgency');
+      var y4 = sectionHeader('Prioritised action plan', 4, 'Your top actions ranked by impact and urgency');
 
       // Column headers
       // Action plan: 3-column layout, no timeline overlap
@@ -1421,7 +1522,59 @@ function generatePDF() {
       y4 += 9;
 
       // Convert questions to action statements
-      function questionToAction(q) {
+      // Business risk lookup — why each gap matters commercially
+      var businessRisks = [
+        [/^Do you know roughly how much energy/i, 'Without baseline data, you cannot set targets, report to customers, or access green finance.'],
+        [/^Have you looked beyond your own premises/i, 'Scope 3 emissions are increasingly required in customer supplier questionnaires and CSRD reporting chains.'],
+        [/^Have you thought about how things like extreme weather/i, 'Unassessed climate risks can affect insurance, lending terms, and business continuity planning.'],
+        [/^Do you have any goals or a rough plan to reduce/i, 'Without a documented target, you cannot demonstrate progress to customers, banks, or investors.'],
+        [/^Have you actually changed anything/i, 'Without evidence of action, ESG claims lack credibility with customers and auditors.'],
+        [/^Do any of the energy sources/i, 'Renewable energy sourcing is now a standard question in corporate supply chain ESG audits.'],
+        [/^Do you communicate your environmental goals/i, 'Customers increasingly expect visible ESG commitments as a condition of supplier approval.'],
+        [/^Do you check whether any of the materials/i, 'Unscreened supply inputs create liability under UK environmental and consumer protection law.'],
+        [/^Have you thought about the environmental impact of what/i, 'Product lifecycle disclosure is becoming mandatory under UK and EU extended producer responsibility rules.'],
+        [/^Do you actively manage how much energy/i, 'Unmanaged premises consumption increases costs and creates compliance gaps under SECR reporting.'],
+        [/^Do you keep track of how much waste/i, 'Undocumented waste creates legal liability and fails basic ESG questionnaire requirements.'],
+        [/^Do you know whether your business premises/i, 'Proximity to protected habitats creates regulatory risk and potential liability for environmental damage.'],
+        [/^Do you try to design or source products/i, 'Single-use and non-recyclable materials are increasingly subject to UK and EU product regulation and customer rejection.'],
+        [/^Do you monitor how much water/i, 'Water stewardship is a growing requirement in food, construction, and manufacturing supply chains.'],
+        [/^Have you had any environmental incidents/i, 'Undocumented incidents create regulatory and reputational risk, and may invalidate insurance claims.'],
+        [/^Do you have anything in place to protect your employees/i, 'Without a H&S policy, you face legal liability, higher insurance premiums, and procurement disqualification.'],
+        [/^Do you offer your employees at least/i, 'Non-compliant parental leave policies create legal risk and damage your ability to retain staff.'],
+        [/^Are your products or services described honestly/i, 'Inaccurate product claims create consumer protection liability and damage customer trust.'],
+        [/^Does your business do anything to give back/i, 'Community engagement is increasingly expected by local authorities and large corporate clients.'],
+        [/^Is there a safe and easy way for your employees/i, 'Without a grievance mechanism, workplace issues escalate, creating legal risk and staff turnover.'],
+        [/^Do you regularly share information with your staff/i, 'Poor internal communication increases staff uncertainty, reduces retention, and creates legal obligations under UK employment law.'],
+        [/^Do you track any basic workforce data/i, 'Without workforce data, you cannot respond to gender pay gap requests or demonstrate fair employment practices.'],
+        [/^Do you offer your employees any training/i, 'Lack of development opportunities is a leading cause of staff turnover, which carries direct financial cost.'],
+        [/^Do you pay all your employees at least the real Living Wage/i, 'Below-Living-Wage pay is increasingly cited in procurement disqualification and reputational risk.'],
+        [/^Do you have any process for checking whether your main suppliers/i, 'Without supplier checks, you carry liability for your supply chain under UK Modern Slavery Act and CSDDD.'],
+        [/^Have you ever checked whether any of your suppliers/i, 'Undetected human rights violations in your supply chain create legal, reputational, and procurement risk.'],
+        [/^Do your contracts or buying terms with suppliers/i, 'Without ethical contract clauses, you have no recourse if a supplier fails ESG standards demanded by your customers.'],
+        [/^Do you make any effort to buy from local/i, 'Public sector and large corporate buyers increasingly require evidence of inclusive procurement in tender submissions.'],
+        [/^When choosing new suppliers/i, 'ESG-blind supplier selection increases your exposure to supply chain risks flagged in corporate audits.'],
+        [/^Do you have a Modern Slavery statement/i, 'UK organisations with turnover over £36m must publish a Modern Slavery statement. Below that threshold, customers increasingly require one.'],
+        [/^Do you give smaller or local suppliers/i, 'Poor supplier payment practices create reputational risk and are scrutinised in public sector procurement.'],
+        [/^Does your business have written guidelines/i, 'Without a code of conduct, staff cannot consistently make ethical decisions, creating legal and reputational exposure.'],
+        [/^Does your business have a clear rule.*bribery/i, 'UK Bribery Act 2010 creates corporate liability for bribery. Without a policy, you lack a legal defence.'],
+        [/^Is there a specific person in your business/i, 'Without a named sustainability lead, ESG actions remain unimplemented and evidence requests become unmanageable.'],
+        [/^Do you share any information about your sustainability/i, 'Invisible ESG efforts provide no competitive advantage and cannot be used in customer or investor conversations.'],
+        [/^Do you have basic data protection practices/i, 'UK GDPR non-compliance carries fines up to £17.5m or 4% of global turnover, plus reputational damage.'],
+        [/^Before introducing a new product/i, 'Unassessed product risks create liability under consumer protection, environmental, and health and safety law.'],
+        [/^Do you actively involve employees/i, 'Lack of stakeholder engagement reduces buy-in, creates legal risk under UK employment law, and weakens ESG credibility.'],
+        [/^Has your business had any serious ethical incidents/i, 'Unaddressed incidents create ongoing legal liability and signal systemic governance failures to auditors.'],
+        [/^Do you have a whistleblowing policy/i, 'Without whistleblowing protection, staff are less likely to report issues early, allowing problems to escalate.'],
+        [/^Do you pay your taxes/i, 'Aggressive tax arrangements create reputational risk and are increasingly scrutinised in ESG governance assessments.'],
+      ];
+      function getBusinessRisk(q) {
+        var s = safe(q);
+        for (var r=0; r<businessRisks.length; r++) {
+          if (businessRisks[r][0].test(s)) return businessRisks[r][1];
+        }
+        return '';
+      }
+
+            function questionToAction(q) {
         var s = safe(q);
         // Map question patterns to clear imperative actions
         var transforms = [
@@ -1486,8 +1639,10 @@ function generatePDF() {
         doc.setFontSize(7.5);
         var actionText = questionToAction(a.q);
         var aTextLines = doc.splitTextToSize(actionText, aColQW);
-        var nLines = Math.min(aTextLines.length, 3);
-        var rowH = Math.max(14, 6 + nLines * 5.5);
+        var nLines = Math.min(aTextLines.length, 2);
+        var riskText = getBusinessRisk(a.q);
+        var riskLines = riskText ? doc.splitTextToSize('Risk: '+safe(riskText), aColQW).length : 0;
+        var rowH = Math.max(18, 5 + nLines * 5 + Math.min(riskLines,2) * 4.5);
 
         if (i%2===0) { doc.setFillColor(250,250,249); doc.rect(M, y4-2, W-2*M, rowH, 'F'); }
         // Priority badge
@@ -1498,11 +1653,20 @@ function generatePDF() {
         // Area — bold, single line
         doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
         doc.text(doc.splitTextToSize(safe(a.cat),40)[0], aColA, y4+4);
-        // Action text — wrapped, all lines
+        // Action text
         doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34); doc.setFontSize(7.5);
-        aTextLines.slice(0,3).forEach(function(line, li) {
-          doc.text(line, aColQ, y4+4+(li*5.5));
+        aTextLines.slice(0,2).forEach(function(line, li) {
+          doc.text(line, aColQ, y4+4+(li*5));
         });
+        // Business risk
+        var bRisk = getBusinessRisk(a.q);
+        if (bRisk) {
+          var riskLines = doc.splitTextToSize('Risk: '+safe(bRisk), aColQW);
+          doc.setFontSize(7); doc.setFont(undefined,'italic'); doc.setTextColor(163,45,45);
+          riskLines.slice(0,2).forEach(function(rl,rli){
+            doc.text(rl, aColQ, y4+4+(Math.min(aTextLines.length,2)*5)+(rli*4.5));
+          });
+        }
         // Divider
         doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
         doc.line(M, y4+rowH, W-M, y4+rowH);
@@ -1517,13 +1681,13 @@ function generatePDF() {
       doc.text('Next step', M+6, y4+7);
       doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
       wrapText('Review this action plan with your leadership team. Assign an owner and target date for each High priority item. Revisit this assessment in 6-12 months to track progress.', M+6, y4+13, W-2*M-12, 5, 2);
-      footer(4);
+      footer(5);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 5: AI RECOMMENDATIONS
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y5 = sectionHeader('AI-powered recommendations', 4, 'Personalised guidance generated for '+safe(co));
+      var y5 = sectionHeader('AI-powered recommendations', 5, 'Personalised guidance generated for '+safe(co));
 
       // Get AI text from the visible results screen
       var aiEl = document.getElementById('ai-content');
@@ -1549,13 +1713,13 @@ function generatePDF() {
 
       doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
       y5 = wrapText(aiText, M+3, y5, W-2*M-6, 5.5);
-      footer(5);
+      footer(6);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 6: CATEGORY DEEP DIVE
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y6 = sectionHeader('Category detail', 5, 'Your responses and scores for each ESG area');
+      var y6 = sectionHeader('Category detail', 6, 'Your responses and scores for each ESG area');
 
       catScoresArr.forEach(function(cs) {
         if (y6 > H-50) return;
@@ -1592,13 +1756,13 @@ function generatePDF() {
         });
         y6 += 4;
       });
-      footer(6);
+      footer(7);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 7: ESRS / VSME ALIGNMENT (useful detail)
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y7 = sectionHeader('ESRS & VSME framework alignment', 6, 'How your business maps to EU sustainability reporting standards');
+      var y7 = sectionHeader('ESRS & VSME framework alignment', 7, 'How your business maps to EU sustainability reporting standards');
 
       // Intro
       doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
@@ -1655,13 +1819,13 @@ function generatePDF() {
         if (whyLines[1]) doc.text(whyLines[1], M+4, y7+27);
         y7 += 36;
       });
-      footer(7);
+      footer(8);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 8: NEXT STEPS & RESOURCES
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y8 = sectionHeader('Next steps & useful resources', 7, 'Practical tools and guidance to help you act on this report');
+      var y8 = sectionHeader('Next steps & useful resources', 8, 'Practical tools and guidance to help you act on this report');
 
       // Quick wins box
       doc.setFillColor(225,245,238);
@@ -1670,9 +1834,9 @@ function generatePDF() {
       doc.text('Your immediate next steps', M+6, y8+8);
       doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
       var nextSteps = [
-        '1. Share this report with your leadership team and agree on who owns each High priority action.',
-        '2. Pick ONE gap from your action plan and tackle it this month. Progress beats perfection.',
-        '3. Set a calendar reminder to retake this assessment in 6-12 months to measure improvement.',
+        '1. Share this report with your leadership team. Assign a named owner and target date for each High priority action.',
+        '2. Start with your highest-risk gap. Use the action and resource links in this report to implement one improvement this month. Progress beats perfection.',
+        '3. Retake this assessment in 6-12 months. Your score will improve as you close gaps, and you will have documented evidence of progress to share with customers and banks.',
       ];
       var nsy = y8+14;
       nextSteps.forEach(function(step) {
@@ -1693,6 +1857,17 @@ function generatePDF() {
         { name:'ICO GDPR SME guide',          url:'ico.org.uk',                use:'UK data protection authority guidance for small businesses' },
       ];
 
+      // Retake CTA box
+      doc.setFillColor(4,52,44);
+      doc.roundedRect(M, y8, W-2*M, 22, 3, 3, 'F');
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
+      doc.text('Retake this assessment annually', M+6, y8+8);
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(120,200,175);
+      doc.text('Your score improves as you close gaps. Annual reassessment gives you documented evidence of progress', M+6, y8+14);
+      doc.text('to share with customers, banks, and investors. Free at myesgcheck.com.', M+6, y8+20);
+      try { doc.link(M+6, y8+15, 80, 6, { url: 'https://myesgcheck.com' }); } catch(e) {}
+      y8 += 28;
+      // Resources table
       doc.setFillColor(245,244,240);
       doc.rect(M, y8, W-2*M, 8, 'F');
       doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
@@ -1734,7 +1909,7 @@ function generatePDF() {
       doc.text('Free ESG self-assessment for UK and EU SMEs  |  Aligned with ESRS Set 1 and EFRAG VSME 2024', M, y8+17);
       doc.setTextColor(79,185,140);
       doc.text('Retake this assessment annually to track your progress and demonstrate improvement to stakeholders.', M, y8+24);
-      footer(8);
+      footer(9);;
 
       // Save
       var filename = (safe(co).replace(/[^a-zA-Z0-9]/g,'-').toLowerCase() || 'company') + '-esg-report.pdf';
@@ -1748,6 +1923,8 @@ function generatePDF() {
     }
   }, 150);
 }
+
+
 
 
 
