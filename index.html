@@ -604,6 +604,10 @@ function buildResults(visitorName, visitorEmail) {
   const valid = catScores.filter(x => x.score !== null).map(x => x.score);
   const overall = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0;
   const grade = getGrade(overall);
+  const totalQs2 = CATEGORIES.reduce((a,c2) => a+c2.questions.length, 0);
+  const answeredQs2 = Object.keys(answers).filter(k => answers[k]).length;
+  const completionPct2 = Math.round(answeredQs2/totalQs2*100);
+  const isPreliminary2 = completionPct2 < 70;
   const rc = scoreColor(overall);
 
   let gaps = [], partials = [], goods = [];
@@ -654,6 +658,7 @@ function buildResults(visitorName, visitorEmail) {
   </div>`).join('');
 
   document.getElementById('results-container').innerHTML = `
+    ${isPreliminary2 ? `<div style="background:#fef3e2;border:2px solid #e09900;border-radius:.75rem;padding:12px 16px;margin-bottom:1.25rem;font-size:.875rem;color:#7a4f00;line-height:1.5"><strong>⚠️ Preliminary score</strong> — You answered ${answeredQs2} of ${totalQs2} questions (${completionPct2}% complete). For a more accurate result, go back and complete the remaining questions before generating your PDF report.</div>` : ''}
     <div class="results-hero">
       <div class="co-label">${co}${coDate ? ' · ' + coDate : ''}</div>
       <h1>Your ESG Assessment Results</h1>
@@ -1148,14 +1153,50 @@ function generatePDF() {
       var gc           = scoreColor(overall);
       var gcArr        = hexToRgb(gc);
 
+      // Completion metrics
+      var totalQs = CATEGORIES.reduce(function(a,c2){ return a+c2.questions.length; }, 0);
+      var answeredQs = Object.keys(answers).filter(function(k){
+        return answers[k] && answers[k] !== '';
+      }).length;
+      var completionPct = Math.round(answeredQs / totalQs * 100);
+      var confidenceLabel = completionPct >= 80 ? 'High' : completionPct >= 50 ? 'Medium' : completionPct >= 30 ? 'Low' : 'Very Low';
+      var confidenceCol = completionPct >= 80 ? [15,110,86] : completionPct >= 50 ? [186,117,23] : completionPct >= 30 ? [153,60,29] : [163,45,45];
+      var isPreliminary = completionPct < 70;
+
+      // Per-category completion
+      function catCompletion(cat) {
+        var ans = cat.questions.filter(function(q,qi){ return !!answers[cat.id+'_'+qi]; }).length;
+        return { answered: ans, total: cat.questions.length, pct: Math.round(ans/cat.questions.length*100) };
+      }
+
+      // Questions where "No" is a POSITIVE answer (no incidents = good)
+      var reverseScored = [
+        /serious ethical incidents/i,
+        /environmental incidents/i,
+      ];
+      function isReverse(q) {
+        for (var r=0; r<reverseScored.length; r++) {
+          if (reverseScored[r].test(safe(q))) return true;
+        }
+        return false;
+      }
+
       var gaps=[], partials=[], goods=[];
       CATEGORIES.forEach(function(cat) {
         cat.questions.forEach(function(q,qi) {
           var v = answers[cat.id+'_'+qi];
           var n = notes[cat.id+'_'+qi] || '';
-          if (v==='no')      gaps.push({cat:cat.label, q:q, note:n, id:cat.id});
-          else if (v==='partial') partials.push({cat:cat.label, q:q, note:n, id:cat.id});
-          else if (v==='yes')    goods.push({cat:cat.label, q:q, id:cat.id});
+          var rev = isReverse(q);
+          if (rev) {
+            // Reverse-scored: No=good, Yes=needs attention
+            if (v==='no') goods.push({cat:cat.label, q:q, id:cat.id, note:'No incidents reported'});
+            else if (v==='yes') gaps.push({cat:cat.label, q:q, note:'Incident reported — ensure it was investigated and resolved', id:cat.id});
+            else if (v==='partial') partials.push({cat:cat.label, q:q, note:n, id:cat.id});
+          } else {
+            if (v==='no')      gaps.push({cat:cat.label, q:q, note:n, id:cat.id});
+            else if (v==='partial') partials.push({cat:cat.label, q:q, note:n, id:cat.id});
+            else if (v==='yes')    goods.push({cat:cat.label, q:q, id:cat.id});
+          }
         });
       });
 
@@ -1268,10 +1309,11 @@ function generatePDF() {
       doc.text('Aligned with ESRS Set 1 (EU 2023/2772) and EFRAG VSME Standard (December 2024)', M, 125);
 
       // Score boxes
+      var scoreLabel = isPreliminary ? 'Preliminary: '+overall+'%' : overall+'%';
       var boxData = [
-        { label:'Overall ESG Score', val: overall+'%', sub: gradeLabel(overall) },
-        { label:'Industry', val: safe(industry).substring(0,16), sub: safe(size) },
-        { label:'Questions answered', val: Object.keys(answers).length+'/'+CATEGORIES.reduce(function(a,c2){return a+c2.questions.length;},0), sub: 'completed' }
+        { label: isPreliminary?'Preliminary ESG Score':'Overall ESG Score', val: scoreLabel, sub: gradeLabel(overall) },
+        { label:'Assessment completion', val: completionPct+'%', sub: answeredQs+' of '+totalQs+' questions' },
+        { label:'Confidence level', val: confidenceLabel, sub: isPreliminary?'Complete all questions':'Score reflects full data' }
       ];
       boxData.forEach(function(box, i) {
         var bx = M + i*62;
@@ -1449,6 +1491,11 @@ function generatePDF() {
         var sc = cs.score === null ? 0 : cs.score;
         var col = scoreColorArr(cs.score);
         var lbl = gradeLabel(cs.score);
+        var catComp = catCompletion(cs.cat);
+        var catGradeLabel = gradeLabel(cs.score);
+        // Block "Leading" if fewer than 50% of category questions answered
+        if (catComp.pct < 50 && catGradeLabel === 'Leading') catGradeLabel = 'Provisional';
+        if (catComp.pct < 30) catGradeLabel = 'Insufficient data';
         doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
         doc.text(safe(cs.cat.label), 60, by+4);
 
@@ -1461,8 +1508,11 @@ function generatePDF() {
         }
         doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
         doc.text((cs.score===null?'N/A':sc+'%'), W-M, by+4, {align:'right'});
-        doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-        doc.text(lbl, W-M, by+8.5, {align:'right'});
+        doc.setFontSize(7.5); doc.setFont(undefined,'normal');
+        // Show category completion
+        var catCompStr = '('+catComp.answered+'/'+catComp.total+' answered)';
+        doc.setTextColor(160,158,150);
+        doc.text(catGradeLabel+'  '+catCompStr, W-M, by+8.5, {align:'right'});
         doc.setDrawColor(235,233,228); doc.setLineWidth(0.3);
         doc.line(60, by+18, W-M, by+18);
         by += 20;
@@ -1475,7 +1525,10 @@ function generatePDF() {
       doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
       doc.text('What this score means for your business', M+6, sb_y+8);
       doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      var scoreDesc = 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" band for this self-assessment. ';
+      var scorePrefix = isPreliminary ?
+        'PRELIMINARY SCORE — based on '+completionPct+'% completion ('+answeredQs+' of '+totalQs+' questions answered). Complete the remaining questions for a full assessment. ' :
+        '';
+      var scoreDesc = scorePrefix + 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" band for this self-assessment. ';
       if (overall < 40) scoreDesc += 'At this score, most businesses struggle to pass ESG questionnaires from Tier 1 contractors, banks, or large customers. The gap is closable — most of the quick wins cost nothing but time.';
       else if (overall < 60) scoreDesc += 'At this score, you will pass basic ESG checks from customers and banks, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
       else if (overall < 80) scoreDesc += 'You are performing well. At this score, you can confidently respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
@@ -2007,21 +2060,30 @@ function generatePDF() {
 
       // Quick wins box
       doc.setFillColor(225,245,238);
-      doc.roundedRect(M, y8, W-2*M, 28, 3, 3, 'F');
-      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
-      doc.text('Your immediate next steps', M+6, y8+8);
-      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
+      // Pre-calculate height before drawing box
       var nextSteps = [
         '1. Share this report with your leadership team. Assign a named owner and target date for each High priority action.',
         '2. Book a free 30-minute ESG consultation at myesgcheck.com — we can help you prioritise and implement your action plan.',
         '3. Retake this assessment in 6-12 months. Your score will improve as you close gaps, and you will have documented evidence of progress to show customers and banks.',
       ];
-      var nsy = y8+14;
+      // Now calculate and draw box with correct height
+      doc.setFontSize(8.5);
+      var nsBoxH = 14;
       nextSteps.forEach(function(step) {
-        nsy = wrapText(safe(step), M+6, nsy, W-2*M-12, 5, 2);
-        nsy += 2;
+        nsBoxH += doc.splitTextToSize(safe(step), W-2*M-14).length * 5.5 + 4;
       });
-      y8 += 34;
+      nsBoxH += 4;
+      doc.setFillColor(225,245,238);
+      doc.roundedRect(M, y8, W-2*M, nsBoxH, 3, 3, 'F');
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+      doc.text('Your immediate next steps', M+6, y8+8);
+      doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
+      var nsy = y8+15;
+      nextSteps.forEach(function(step) {
+        nsy = wrapText(safe(step), M+6, nsy, W-2*M-14, 5.5, 4);
+        nsy += 3;
+      });
+      y8 += nsBoxH + 6;
 
       // Resources table
       var resources = [
