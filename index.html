@@ -1671,6 +1671,22 @@ function generatePDF() {
         var nextMsg = nextBand ? 'You are '+ptsAway+' point'+(ptsAway!==1?'s':'')+' away from "'+nextBand.label+'" ('+nextBand.min+'%). Closing your top gaps could get you there.' : 'You have reached the highest ESG band.';
         doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
         _nextBandLines.forEach(function(l){ doc.text(l, M+6, _sby); _sby += 5; });
+        // Visual progress bar
+        _sby += 3;
+        var barTotalW = W-2*M-12;
+        doc.setFillColor(232,230,225); doc.roundedRect(M+6, _sby, barTotalW, 5, 2, 2, 'F');
+        var fillPct = Math.min(1, overall/100);
+        doc.setFillColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.roundedRect(M+6, _sby, barTotalW*fillPct, 5, 2, 2, 'F');
+        // Band markers at 40, 60, 80
+        [40,60,80].forEach(function(band) {
+          var mx = M+6 + barTotalW*(band/100);
+          doc.setDrawColor(255,255,255); doc.setLineWidth(1);
+          doc.line(mx, _sby, mx, _sby+5);
+          doc.setFontSize(6); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+          doc.text(band+'%', mx-3, _sby+9);
+        });
+        _sby += 14;
       }
 
       // Industry benchmark comparison bars
@@ -1749,7 +1765,9 @@ function generatePDF() {
 
       // Business impact box
       var bimpactItems = getBusinessImpact(overall, industry);
-      if (bimpactItems.length > 0 && bmy < H-60) {
+      // Force business impact onto same page or continue on next
+      if (bmy > H - 60) { doc.addPage(); bmy = 22; }
+      if (bimpactItems.length > 0) {
         var biH = 10 + bimpactItems.length * 7;
         doc.setFillColor(247,246,243);
         doc.setDrawColor(225,224,220); doc.setLineWidth(0.4);
