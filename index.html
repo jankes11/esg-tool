@@ -1380,16 +1380,16 @@ function generatePDF() {
       var boxW = Math.floor((W - 2*M - 6) / 4);
       boxData.forEach(function(box, i) {
         var bx = M + i*(boxW+2);
-        doc.setFillColor(255,255,255);
-        doc.roundedRect(bx, 138, boxW, 36, 3, 3, 'F');
-        doc.setDrawColor(255,255,255,20); doc.setLineWidth(0.4);
-        doc.roundedRect(bx, 138, boxW, 36, 3, 3, 'S');
-        doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(130,170,155);
-        doc.text(safe(box.label), bx+4, 145);
-        doc.setFontSize(i===0?15:10); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-        doc.text(safe(String(box.val).substring(0,18)), bx+4, i===0?157:155);
-        doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(79,214,168);
-        doc.text(safe(box.sub), bx+4, i===0?163:161);
+        doc.setFillColor(248,252,250);
+        doc.roundedRect(bx, 138, boxW, 28, 3, 3, 'F');
+        doc.setDrawColor(200,230,215); doc.setLineWidth(0.4);
+        doc.roundedRect(bx, 138, boxW, 28, 3, 3, 'S');
+        doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+        doc.text(safe(box.label), bx+4, 143);
+        doc.setFontSize(i===0?14:10); doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.text(safe(String(box.val).substring(0,18)), bx+4, i===0?153:152);
+        doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+        doc.text(safe(box.sub), bx+4, i===0?159:158);
       });
 
 
@@ -1405,10 +1405,10 @@ function generatePDF() {
       if (parts.length === 0) parts.push('Industry: Not disclosed');
       doc.text(parts.join('   |   '), M, 205);
       doc.text('Assessment date: '+safe(coDate)+'   |   Valid for: 12 months', M, 211);
-      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(79,214,168);
-      doc.text('Save this report — your customers may ask for it.', M, 218);
-      doc.setFontSize(8); doc.setTextColor(160,158,150);
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
       doc.text('Prepared by myESGcheck.com  |  Self-assessment tool aligned with ESRS Set 1 and EFRAG VSME 2024', M, 218);
+      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
+      doc.text('✓ Save this report — your customers may ask for it.', M, 225);
       // ESRS seal
       doc.setDrawColor(15,110,86); doc.setLineWidth(1.5);
       doc.circle(W-28, 202, 14, 'S');
