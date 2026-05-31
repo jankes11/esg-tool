@@ -2217,7 +2217,7 @@ function generatePDF() {
         var discText = 'Estimated impacts are based on question weighting and assume full implementation. Actual improvement depends on quality of implementation.';
         var discLinesArr = doc.splitTextToSize(discText, W-2*M);
         var neededH = (impactLines.length * 5.5) + (discLinesArr.length * 5) + 20;
-        if (y4 + neededH > H - 28) { doc.addPage(); y4 = 22; } else { y4 += 4; }
+        y4 += 6; // render impact summary at current position, no page break
         impactLines.forEach(function(il){ doc.text(il, M, y4); y4 += 5.5; });
         y4 += 4;
         doc.setFontSize(7.5); doc.setFont(undefined,'italic'); doc.setTextColor(160,158,150);
