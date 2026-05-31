@@ -1485,19 +1485,19 @@ function generatePDF() {
       var wColors = [[163,45,45],[186,117,23],[15,110,86],[130,128,122]];
       var wBgs = [[252,235,235],[250,238,220],[225,245,238],[240,238,234]];
       wBands.forEach(function(wb, wi) {
-        if (ym > H-30) return;
+        if (ym > H-25) return;
         doc.setFillColor(wBgs[wi][0],wBgs[wi][1],wBgs[wi][2]);
-        doc.roundedRect(M, ym, W-2*M, 20, 2, 2, 'F');
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(wColors[wi][0],wColors[wi][1],wColors[wi][2]);
-        doc.text(safe(wb[0]), M+4, ym+7);
-        doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52); doc.setFontSize(7.5);
-        doc.text(safe(wb[1]), M+4, ym+13);
-        doc.setTextColor(130,128,122); doc.setFontSize(7);
-        doc.text('Examples: '+safe(wb[2]), M+4, ym+18);
-        ym += 23;
+        doc.roundedRect(M, ym, W-2*M, 15, 2, 2, 'F');
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(wColors[wi][0],wColors[wi][1],wColors[wi][2]);
+        doc.text(safe(wb[0]), M+4, ym+6);
+        doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52); doc.setFontSize(7);
+        doc.text(safe(wb[1]), M+4, ym+11);
+        doc.setTextColor(130,128,122); doc.setFontSize(6.5);
+        var exl = doc.splitTextToSize('Eg: '+safe(wb[2]), W-2*M-8);
+        doc.text(exl[0]||'', M+4, ym+14.5);
+        ym += 17;
       });
-      ym += 0; // end weight bands
-      ym += 30;
+      ym += 6;
 
       // Score bands table
       doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
@@ -1513,12 +1513,12 @@ function generatePDF() {
       ];
       bands.forEach(function(band, bi) {
         doc.setFillColor(band[5][0],band[5][1],band[5][2]);
-        doc.roundedRect(M, ym, W-2*M, 14, 2, 2, 'F');
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(band[4][0],band[4][1],band[4][2]);
-        doc.text(band[0]+'-'+band[1]+'%  '+band[2], M+4, ym+9);
+        doc.roundedRect(M, ym, W-2*M, 12, 2, 2, 'F');
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(band[4][0],band[4][1],band[4][2]);
+        doc.text(band[0]+'-'+band[1]+'%  '+band[2], M+4, ym+8);
         doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
-        doc.text(safe(band[3]), M+52, ym+9);
-        ym += 16;
+        doc.text(safe(band[3]), M+52, ym+8);
+        ym += 14;
       });
 
       ym += 6;
