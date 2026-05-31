@@ -1483,11 +1483,11 @@ function generatePDF() {
         doc.setFillColor(wb[4][0],wb[4][1],wb[4][2]);
         doc.roundedRect(M, ym, W-2*M, 15, 2,2,'F');
         doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(wb[3][0],wb[3][1],wb[3][2]);
-        doc.text(wb[0], M+4, ym+6);
+        doc.text(wb[0], M+4, ym+5);
         doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52); doc.setFontSize(7);
-        doc.text(wb[1], M+4, ym+11);
+        doc.text(wb[1], M+4, ym+9.5);
         doc.setTextColor(130,128,122); doc.setFontSize(6.5);
-        doc.text('e.g. '+wb[2], M+4, ym+14.5);
+        doc.text('e.g. '+wb[2], M+4, ym+13.5);
         ym += 16;
       });
       ym += 5;
@@ -1650,7 +1650,7 @@ function generatePDF() {
       // ════════════════════════════════════════════════
       if(bmark3 && py3 < H-45){
         var ctxLine3 = overall>=bmark3[1] ?
-          'Top 25% performer in '+bmark3[2]+' sector — strong position for ESG-sensitive tenders.' :
+          'At or above the top-quartile threshold for '+bmark3[2]+' SMEs — strong position for ESG-sensitive tenders.' :
           overall>bmark3[0] ?
           'Above typical '+bmark3[2]+' SME average ('+bmark3[0]+'%). Need +'+(bmark3[1]-overall)+' more points to reach top 25%.' :
           'Below typical '+bmark3[2]+' average. Top 25% is '+bmark3[1]+'% — +'+(bmark3[1]-overall)+' points to close the gap.';
@@ -1766,7 +1766,10 @@ function generatePDF() {
       });
       var proc4Score = Math.round((proc4Yes + proc4Part*0.5)/procItems4.length*100);
       var proc4Col = proc4Score>=70?[15,110,86]:proc4Score>=40?[186,117,23]:[163,45,45];
+      // Check if H&S (critical requirement) is missing - downgrade label if so
+      var hsMissing = answers['social_0'] !== 'yes';
       var proc4Label = proc4Score>=70?'Strong readiness':proc4Score>=40?'Moderate readiness':'Needs work';
+      if (proc4Score>=70 && hsMissing) proc4Label = 'Mostly strong — H&S gap noted';
 
       // Score header
       doc.setFillColor(250,248,244); doc.setDrawColor(220,218,213); doc.setLineWidth(0.3);
@@ -1889,11 +1892,11 @@ function generatePDF() {
 
       // Gaps
       if (gaps.length > 0) {
-        var shownGaps = Math.min(gaps.length, 6);
-        var gapHdr = gaps.length > 6 ? 'GAPS — Not yet in place (showing '+shownGaps+' of '+gaps.length+')' : 'GAPS — Not yet in place';
+        var shownGaps = gaps.length; // show all gaps
+        var gapHdr = 'GAPS — Not yet in place ('+gaps.length+' identified)';
         doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(163,45,45);
         doc.text(gapHdr, M, fy); fy += 6;
-        gaps.slice(0, 6).forEach(function(f) {
+        gaps.forEach(function(f) {
           if (fy > H-30) return;
           doc.setFillColor(252,235,235);
           doc.setDrawColor(240,192,192); doc.setLineWidth(0.3);
@@ -1913,11 +1916,11 @@ function generatePDF() {
 
       // In progress
       if (partials.length > 0 && fy < H-50) {
-        var shownParts = Math.min(partials.length, 4);
-        var partHdr = partials.length > 4 ? 'IN PROGRESS — Started but not complete (showing '+shownParts+' of '+partials.length+')' : 'IN PROGRESS — Started but not complete';
+        var shownParts = partials.length; // show all partials
+        var partHdr = 'IN PROGRESS — Started but not complete ('+partials.length+' identified)';
         doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(186,117,23);
         doc.text(partHdr, M, fy); fy += 6;
-        partials.slice(0, 4).forEach(function(f) {
+        partials.forEach(function(f) {
           if (fy > H-30) return;
           doc.setFillColor(250,238,220);
           doc.setDrawColor(240,216,160); doc.setLineWidth(0.3);
@@ -2314,9 +2317,9 @@ function generatePDF() {
         });
         y4 += 3;
         doc.setFontSize(7.5); doc.setFont(undefined,'italic'); doc.setTextColor(160,158,150);
-        discLinesArr.forEach(function(dl){ 
-          if (y4 < H-22) { doc.text(dl, M, y4); y4 += 5; }
-        });
+        // Render disclaimer - ensure it fits, or skip last partial line
+        var discRemaining = Math.floor((H-24-y4)/5);
+        discLinesArr.slice(0, Math.max(0,discRemaining)).forEach(function(dl){ doc.text(dl, M, y4); y4 += 5; });
         y4 += 6;
       }
       y4 += 4;
@@ -2411,7 +2414,10 @@ function generatePDF() {
 
       // Effort vs Impact prioritisation table
       if (y5 < H - 65) {
-        y5 += 8;
+        y5 += 5;
+        doc.setDrawColor(225,223,218); doc.setLineWidth(0.3);
+        doc.line(M, y5, W-M, y5);
+        y5 += 7;
         doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
         doc.text('Prioritisation guide \u2014 where to start', M, y5);
         y5 += 7;
