@@ -1405,6 +1405,8 @@ function generatePDF() {
       if (parts.length === 0) parts.push('Industry: Not disclosed');
       doc.text(parts.join('   |   '), M, 205);
       doc.text('Assessment date: '+safe(coDate)+'   |   Valid for: 12 months', M, 211);
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(79,214,168);
+      doc.text('Save this report — your customers may ask for it.', M, 218);
       doc.setFontSize(8); doc.setTextColor(160,158,150);
       doc.text('Prepared by myESGcheck.com  |  Self-assessment tool aligned with ESRS Set 1 and EFRAG VSME 2024', M, 218);
       // ESRS seal
@@ -2025,26 +2027,29 @@ function generatePDF() {
       // Already Strong section
       if (goods.length > 0 && fy < H-40) {
         fy += 4;
-        var maxGoods = 5;
+        var maxGoods = Math.min(goods.length, 11);
         var shownGoods = 0;
         doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
         doc.text('ALREADY STRONG ✓ — '+goods.length+' area'+(goods.length!==1?'s':'')+' working well', M, fy);
         fy += 6;
         goods.forEach(function(f) {
-          if (fy > H-25 || shownGoods >= maxGoods) return;
+          if (fy > H-20 || shownGoods >= maxGoods) return;
+          var qLines = doc.splitTextToSize(safe(f.q), W-2*M-14);
+          var rowH = qLines.length > 1 ? 20 : 14;
+          if (fy + rowH > H-20) return;
           doc.setFillColor(225,245,238);
           doc.setDrawColor(184,224,208); doc.setLineWidth(0.3);
-          doc.roundedRect(M, fy, W-2*M, 14, 2, 2, 'FD');
-          doc.setFillColor(15,110,86); doc.circle(M+5, fy+7, 2, 'F');
-          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
-          doc.text(safe(f.cat), M+10, fy+6);
-          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-          doc.text(doc.splitTextToSize(safe(f.q), W-2*M-14)[0], M+10, fy+11);
-          fy += 17; shownGoods++;
+          doc.roundedRect(M, fy, W-2*M, rowH, 2, 2, 'FD');
+          doc.setFillColor(15,110,86); doc.circle(M+5, fy+rowH/2, 2, 'F');
+          doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+          doc.text(safe(f.cat), M+10, fy+5.5);
+          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22); doc.setFontSize(7.5);
+          qLines.slice(0,2).forEach(function(ql, qli){ doc.text(ql, M+10, fy+10.5+(qli*4.5)); });
+          fy += rowH + 2; shownGoods++;
         });
         if (goods.length > maxGoods) {
           doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
-          doc.text('+ '+(goods.length-maxGoods)+' more strong areas \u2014 see Category Detail (Section 6)', M, fy);
+          doc.text('+ '+(goods.length-maxGoods)+' more strong areas \u2014 see Category Detail (Section 7)', M, fy);
           fy += 5;
         }
       }
