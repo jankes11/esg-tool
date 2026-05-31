@@ -1534,138 +1534,191 @@ function generatePDF() {
       doc.addPage();
       var y2 = sectionHeader('Score overview', 2, 'How your business performed across all 5 ESG areas');
 
-      // ── Pre-calculate ALL variables needed across sections ───
+      // ════════════════════════════════════════════════
+      // PRE-CALCULATE (scope: entire page 3)
+      // ════════════════════════════════════════════════
       var lowestCat3 = catScoresArr.reduce(function(a,b){
         if(a.score===null) return b; if(b.score===null) return a;
         return a.score < b.score ? a : b;
       });
-      var bandThresholds3 = [{min:20,label:'Starting out'},{min:40,label:'Developing'},{min:60,label:'Progressing'},{min:80,label:'Leading'}];
+      var bt3 = [{min:20,label:'Starting out'},{min:40,label:'Developing'},{min:60,label:'Progressing'},{min:80,label:'Leading'}];
       var nextBand3 = null;
-      for (var bi3=0; bi3<bandThresholds3.length; bi3++) {
-        if (overall < bandThresholds3[bi3].min) { nextBand3 = bandThresholds3[bi3]; break; }
-      }
-      var benchmarks3 = {
+      for(var bi3=0;bi3<bt3.length;bi3++){ if(overall<bt3[bi3].min){nextBand3=bt3[bi3];break;} }
+      var bm3 = {
         'construction':[46,68,'Construct'],'build':[46,68,'Construct'],'civil':[46,68,'Construct'],
         'manufactur':[49,71,'Manufact'],'retail':[44,65,'Retail'],'food':[44,65,'Retail'],
         'professional':[52,74,'Prof.Svcs'],'consult':[52,74,'Prof.Svcs'],
         'tech':[52,74,'Prof.Svcs'],'software':[52,74,'Prof.Svcs'],
       };
-      var indKey3 = safe(industry).toLowerCase();
       var bmark3 = null;
-      Object.keys(benchmarks3).forEach(function(k){ if(indKey3.indexOf(k)>-1) bmark3=benchmarks3[k]; });
+      Object.keys(bm3).forEach(function(k){ if(safe(industry).toLowerCase().indexOf(k)>-1) bmark3=bm3[k]; });
 
-      // Hard ceiling - everything must fit above this Y
-      var H_CEIL = y2 + 238;
+      // ════════════════════════════════════════════════
+      // ROW 1: Ring chart (left) + Category bars (right)
+      // Height: 75mm
+      // ════════════════════════════════════════════════
+      var ROW1_TOP = y2;
+      var ROW1_H   = 70;
+      var LCOL_W   = 52;  // left column width
+      var RCOL_X   = M + LCOL_W + 4;
+      var RCOL_W   = W - 2*M - LCOL_W - 4;
 
-      // ── Ring chart + category bars ────────────────────────────
-      var cx3=M+20, cy3=y2+31, r3=16;
-      doc.setDrawColor(235,233,228); doc.setLineWidth(5);
-      doc.circle(cx3,cy3,r3,'S');
+      // Ring chart centred in left column
+      var cx3 = M + LCOL_W/2;
+      var cy3 = ROW1_TOP + 30;
+      var r3  = 20;
+      doc.setDrawColor(232,230,225); doc.setLineWidth(7);
+      doc.circle(cx3, cy3, r3, 'S');
       var sa3=-Math.PI/2, ea3=sa3+(2*Math.PI*overall/100);
-      doc.setLineWidth(5);
-      for (var s3=0;s3<80;s3++){
-        var a13=sa3+(ea3-sa3)*s3/80, a23=sa3+(ea3-sa3)*(s3+1)/80;
+      doc.setLineWidth(7);
+      for(var s3=0;s3<100;s3++){
+        var a13=sa3+(ea3-sa3)*s3/100, a23=sa3+(ea3-sa3)*(s3+1)/100;
         doc.setDrawColor(gcArr[0],gcArr[1],gcArr[2]);
         doc.line(cx3+r3*Math.cos(a13),cy3+r3*Math.sin(a13),cx3+r3*Math.cos(a23),cy3+r3*Math.sin(a23));
       }
-      doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
-      doc.text(overall+'%', cx3, cy3+3, {align:'center'});
-      doc.setFontSize(5.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-      doc.text(gradeLabel(overall).toUpperCase(), cx3, cy3+8, {align:'center'});
+      // Score inside ring
+      doc.setFontSize(18); doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+      doc.text(overall+'%', cx3, cy3+3.5, {align:'center'});
+      doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+      doc.text(gradeLabel(overall).toUpperCase(), cx3, cy3+9, {align:'center'});
+      // Points to next band below ring
+      if(nextBand3){
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+        doc.text('+'+(nextBand3.min-overall)+' pts', cx3, cy3+22, {align:'center'});
+        doc.setFontSize(6); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+        doc.text('to "'+nextBand3.label+'"', cx3, cy3+27, {align:'center'});
+      }
+      // Confidence badge below
+      doc.setFontSize(6.5); doc.setFont(undefined,'bold');
+      var confCol3 = confidenceLabel==='High'?[15,110,86]:confidenceLabel==='Medium'?[186,117,23]:[163,45,45];
+      doc.setTextColor(confCol3[0],confCol3[1],confCol3[2]);
+      doc.text(confidenceLabel+' confidence', cx3, cy3+34, {align:'center'});
 
-      var by3 = y2+2;
+      // Category bars in right column
+      var barY3 = ROW1_TOP + 2;
+      var barH3 = ROW1_H / catScoresArr.length; // distribute evenly
       catScoresArr.forEach(function(cs){
-        var sc=cs.score===null?0:cs.score, col=scoreColorArr(cs.score), cc=catCompletion(cs.cat);
-        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(safe(cs.cat.label), 56, by3+3.5);
-        doc.setFillColor(232,230,225); doc.roundedRect(56,by3+6,W-M-56,3.5,1,1,'F');
-        if(sc>0){doc.setFillColor(col[0],col[1],col[2]);doc.roundedRect(56,by3+6,(W-M-56)*sc/100,3.5,1,1,'F');}
-        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
-        doc.text(sc+'%', W-M, by3+3.5,{align:'right'});
-        doc.setFontSize(5.5); doc.setFont(undefined,'normal'); doc.setTextColor(180,178,172);
-        doc.text('('+cc.answered+'/'+cc.total+')', W-M-10, by3+7,{align:'right'});
-        by3 += 13;
+        var sc=cs.score===null?0:cs.score;
+        var col=scoreColorArr(cs.score);
+        var cc=catCompletion(cs.cat);
+        // Label row
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text(safe(cs.cat.label), RCOL_X, barY3+4.5);
+        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
+        doc.text(sc+'%', W-M, barY3+4.5, {align:'right'});
+        // Bar track
+        doc.setFillColor(232,230,225); doc.roundedRect(RCOL_X, barY3+7, RCOL_W, 5, 1,1,'F');
+        if(sc>0){ doc.setFillColor(col[0],col[1],col[2]); doc.roundedRect(RCOL_X, barY3+7, RCOL_W*sc/100, 5, 1,1,'F'); }
+        // Completion + grade right-aligned below bar
+        doc.setFontSize(6); doc.setFont(undefined,'normal'); doc.setTextColor(180,178,172);
+        doc.text(gradeLabel(cs.score)+'  ('+cc.answered+'/'+cc.total+')', W-M, barY3+11, {align:'right'});
+        // Separator
+        doc.setDrawColor(240,238,234); doc.setLineWidth(0.25);
+        doc.line(RCOL_X, barY3+barH3-1, W-M, barY3+barH3-1);
+        barY3 += barH3;
       });
 
-      var py3 = by3 + 3;
+      var py3 = ROW1_TOP + ROW1_H + 6;
 
-      // ── Score summary box (~28mm) ─────────────────────────────
-      if (py3 + 28 < H_CEIL) {
-        var descTxt3 = gradeLabel(overall)+' ('+overall+'%). ';
-        if(overall<40) descTxt3+='Significant gaps — most quick wins cost only time.';
-        else if(overall<60) descTxt3+='Likely to satisfy basic ESG questionnaires. Gaps may affect Tier 1 supplier onboarding.';
-        else if(overall<80) descTxt3+='Well-placed for most customer ESG requests. Formalise remaining gaps for audits.';
-        else descTxt3+='Leading performance — competitive advantage for contracts and investment.';
-        if(lowestCat3&&lowestCat3.score!==null) descTxt3+=' Focus: '+safe(lowestCat3.cat.label)+' ('+lowestCat3.score+'%).';
-        doc.setFontSize(8); var dLines3=doc.splitTextToSize(descTxt3,W-2*M-10);
-        var sbH3=8+Math.min(dLines3.length,2)*5+10; // title + desc + nextband + progressbar
-        doc.setFillColor(247,246,243);
-        doc.roundedRect(M,py3,W-2*M,sbH3,3,3,'F');
-        doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text('Score summary',M+5,py3+6);
-        var ty3=py3+12;
-        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-        dLines3.slice(0,2).forEach(function(l){doc.text(l,M+5,ty3);ty3+=5;});
-        if(nextBand3){
-          doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
-          doc.text('+'+(nextBand3.min-overall)+' points to reach "'+nextBand3.label+'" ('+nextBand3.min+'%)', M+5, ty3+1);
-        }
-        // Progress bar
-        var pbY3=py3+sbH3-5; var pbW3=W-2*M-10;
-        doc.setFillColor(228,226,222); doc.roundedRect(M+5,pbY3,pbW3,3,1,1,'F');
-        doc.setFillColor(gcArr[0],gcArr[1],gcArr[2]); doc.roundedRect(M+5,pbY3,pbW3*overall/100,3,1,1,'F');
-        [40,60,80].forEach(function(bv){
-          var mx3=M+5+pbW3*(bv/100);
-          doc.setDrawColor(255,255,255); doc.setLineWidth(0.6); doc.line(mx3,pbY3,mx3,pbY3+3);
-          doc.setFontSize(5); doc.setFont(undefined,'normal'); doc.setTextColor(180,178,172);
-          doc.text(bv+'%',mx3-3,pbY3+7);
-        });
-        py3+=sbH3+4;
-      }
+      // ════════════════════════════════════════════════
+      // ROW 2: Score summary box (full width, ~32mm)
+      // ════════════════════════════════════════════════
+      doc.setFontSize(8); doc.setFont(undefined,'normal');
+      var descTxt3 = gradeLabel(overall)+' ('+overall+'%). ';
+      if(overall<40) descTxt3+='Significant gaps to address — most quick wins cost only time and a written document.';
+      else if(overall<60) descTxt3+='Likely to satisfy basic ESG questionnaires. Gaps may affect supplier onboarding with larger customers.';
+      else if(overall<80) descTxt3+='Well-placed for most customer ESG requests. Formalise remaining gaps to prepare for detailed audits.';
+      else descTxt3+='Leading performance — genuine competitive advantage for winning contracts and demonstrating responsibility.';
+      if(lowestCat3&&lowestCat3.score!==null) descTxt3+=' Focus: '+safe(lowestCat3.cat.label)+' ('+lowestCat3.score+'%).';
+      var dLines3 = doc.splitTextToSize(descTxt3, W-2*M-10);
+      var nbText3 = nextBand3 ? '+'+(nextBand3.min-overall)+' points to reach "'+nextBand3.label+'" ('+nextBand3.min+'%)' : 'You are in the top performance band.';
+      var sbH3 = 10 + Math.min(dLines3.length,3)*5.5 + 10 + 6; // padding + text + nextband + progressbar
+      doc.setFillColor(247,246,243);
+      doc.roundedRect(M, py3, W-2*M, sbH3, 3,3,'F');
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text('Score summary', M+5, py3+7);
+      var ty3 = py3+13;
+      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
+      dLines3.slice(0,3).forEach(function(l){ doc.text(l,M+5,ty3); ty3+=5.5; });
+      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
+      doc.text(nbText3, M+5, ty3+2);
+      // Progress bar
+      var pbY3 = py3+sbH3-4; var pbW3 = W-2*M-10;
+      doc.setFillColor(225,223,218); doc.roundedRect(M+5,pbY3,pbW3,3,1,1,'F');
+      doc.setFillColor(gcArr[0],gcArr[1],gcArr[2]); doc.roundedRect(M+5,pbY3,pbW3*overall/100,3,1,1,'F');
+      [40,60,80].forEach(function(bv){
+        var mx3=M+5+pbW3*(bv/100);
+        doc.setDrawColor(255,255,255); doc.setLineWidth(0.6); doc.line(mx3,pbY3,mx3,pbY3+3);
+        doc.setFontSize(5.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+        doc.text(bv+'%',mx3-3,pbY3+7);
+      });
+      py3 += sbH3 + 5;
 
-      // ── Benchmark (compact, ~24mm) ─────────────────────────────
-      if (bmark3 && py3+24 < H_CEIL) {
-        var ctxLine3 = overall>=bmark3[1] ? 'Top 25% performer in '+bmark3[2]+' sector' :
-                       overall>bmark3[0]  ? 'Above typical '+bmark3[2]+' SME (avg '+bmark3[0]+'%). Reach top 25% with +'+(bmark3[1]-overall)+' pts.' :
-                       'Below typical '+bmark3[2]+' avg. Top 25% = '+bmark3[1]+'% (+' +(bmark3[1]-overall)+' pts to go).';
+      // ════════════════════════════════════════════════
+      // ROW 3: Benchmark (full width, ~32mm)
+      // ════════════════════════════════════════════════
+      if(bmark3 && py3 < H-35){
+        var ctxLine3 = overall>=bmark3[1] ? 'Top 25% performer in '+bmark3[2]+' sector — excellent position for ESG-sensitive tenders.' :
+                       overall>bmark3[0]  ? 'Above typical '+bmark3[2]+' SME (avg '+bmark3[0]+'%). Need +'+(bmark3[1]-overall)+' pts to reach top 25%.' :
+                       'Below typical '+bmark3[2]+' avg. Top 25% is '+bmark3[1]+'% — +'+(bmark3[1]-overall)+' pts to close the gap.';
         doc.setFillColor(237,245,255); doc.setDrawColor(180,210,240); doc.setLineWidth(0.3);
-        doc.roundedRect(M,py3,W-2*M,24,3,3,'FD');
-        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(12,68,124);
-        doc.text(safe(co.substring(0,22))+' vs. '+bmark3[2]+' SMEs', M+4, py3+6);
-        doc.setFontSize(6); doc.setFont(undefined,'normal'); doc.setTextColor(55,100,160);
-        doc.text(safe(ctxLine3), M+4, py3+11);
-        var bbY3=py3+13; var bbW3=W-2*M-58;
-        [[safe(co.substring(0,16)),overall,gcArr],['Typical '+bmark3[2],bmark3[0],[130,128,122]],['Top 25%',bmark3[1],[15,110,86]]].forEach(function(bd){
-          doc.setFontSize(6); doc.setFont(undefined,'normal'); doc.setTextColor(50,48,44);
-          doc.text(bd[0],M+4,bbY3+2.5);
-          doc.setFillColor(225,223,218); doc.roundedRect(M+56,bbY3,bbW3,3,1,1,'F');
-          doc.setFillColor(bd[2][0],bd[2][1],bd[2][2]); doc.roundedRect(M+56,bbY3,bbW3*bd[1]/100,3,1,1,'F');
-          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(bd[2][0],bd[2][1],bd[2][2]);
-          doc.text(bd[1]+'%',M+56+bbW3+3,bbY3+2.5);
-          bbY3+=6;
+        var bmH3 = 32;
+        doc.roundedRect(M, py3, W-2*M, bmH3, 3,3,'FD');
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(12,68,124);
+        doc.text(safe(co.substring(0,22))+' vs. '+bmark3[2]+' SMEs', M+4, py3+7);
+        doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(55,100,160);
+        doc.text(safe(ctxLine3), M+4, py3+12);
+        var bbY3=py3+15; var bbW3=W-2*M-62;
+        [[safe(co.substring(0,18)),overall,gcArr],
+         ['Typical '+bmark3[2],bmark3[0],[130,128,122]],
+         ['Top 25%',bmark3[1],[15,110,86]]
+        ].forEach(function(bd){
+          doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(50,48,44);
+          doc.text(bd[0], M+4, bbY3+2.5);
+          doc.setFillColor(225,223,218); doc.roundedRect(M+58,bbY3,bbW3,4,1,1,'F');
+          doc.setFillColor(bd[2][0],bd[2][1],bd[2][2]); doc.roundedRect(M+58,bbY3,bbW3*bd[1]/100,4,1,1,'F');
+          doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(bd[2][0],bd[2][1],bd[2][2]);
+          doc.text(bd[1]+'%', M+58+bbW3+3, bbY3+3);
+          bbY3+=7;
         });
-        py3+=27;
+        doc.setFontSize(5.5); doc.setFont(undefined,'normal'); doc.setTextColor(180,178,172);
+        doc.text('Illustrative; myESGcheck & public SME ESG data 2024-25. Not statistically representative.', M+4, py3+bmH3-2);
+        py3 += bmH3 + 5;
       }
 
-      // ── Maturity path (~17mm) ──────────────────────────────────
-      if (py3+17 < H_CEIL) {
-        doc.setFillColor(247,246,243); doc.setDrawColor(218,216,211); doc.setLineWidth(0.3);
-        doc.roundedRect(M,py3,W-2*M,17,3,3,'FD');
-        var stW3b=(W-2*M-6)/3;
-        [['WHERE YOU ARE',gradeLabel(overall)+' — '+overall+'%',gcArr],
-         ['NEXT STAGE',(nextBand3?nextBand3.label+' — '+nextBand3.min+'%+':'Leading'),[186,117,23]],
-         ['AFTER HIGH ACTIONS',projMin+'-'+projMax+'% — '+bandLabel,[15,110,86]]
-        ].forEach(function(st,si){
-          var sx3=M+3+si*(stW3b+1.5);
-          if(si>0){doc.setFontSize(9);doc.setTextColor(200,198,194);doc.setFont(undefined,'normal');doc.text('>',sx3-5,py3+11);}
-          doc.setFontSize(5.5); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
-          doc.text(st[0],sx3,py3+5);
-          doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(st[2][0],st[2][1],st[2][2]);
-          var stl3=doc.splitTextToSize(safe(st[1]),stW3b-4);
-          doc.text(stl3[0]||'',sx3,py3+11);
-          if(stl3[1]) doc.text(stl3[1],sx3,py3+15.5);
+      // ════════════════════════════════════════════════
+      // ROW 4: 3-column stats summary (fills remaining space)
+      // ════════════════════════════════════════════════
+      if(py3 < H-45){
+        var statsH = Math.min(50, H-20-py3); // use remaining space
+        var colW3 = (W-2*M-4)/3;
+        var statData3 = [
+          { val: gaps.length,     label:'Gaps to address',  sub:'High priority actions', col:[163,45,45],   bg:[252,235,235] },
+          { val: partials.length, label:'In progress',      sub:'Partially implemented', col:[186,117,23],  bg:[250,238,220] },
+          { val: goods.length,    label:'Already strong',   sub:'Fully in place',        col:[15,110,86],   bg:[225,245,238] },
+        ];
+        statData3.forEach(function(sd,si){
+          var sx3=M+si*(colW3+2);
+          doc.setFillColor(sd.bg[0],sd.bg[1],sd.bg[2]);
+          doc.roundedRect(sx3, py3, colW3, statsH, 3,3,'F');
+          doc.setFontSize(28); doc.setFont(undefined,'bold'); doc.setTextColor(sd.col[0],sd.col[1],sd.col[2]);
+          doc.text(String(sd.val), sx3+colW3/2, py3+statsH*0.5, {align:'center'});
+          doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(sd.col[0],sd.col[1],sd.col[2]);
+          doc.text(sd.label, sx3+colW3/2, py3+statsH*0.7, {align:'center'});
+          doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+          doc.text(sd.sub, sx3+colW3/2, py3+statsH*0.83, {align:'center'});
         });
-        py3+=20;
+        py3 += statsH + 4;
+      }
+
+      // ════════════════════════════════════════════════
+      // ROW 5: Key insight line (fills any remaining gap)
+      // ════════════════════════════════════════════════
+      if(lowestCat3 && lowestCat3.score!==null && py3 < H-20){
+        doc.setFontSize(8); doc.setFont(undefined,'italic'); doc.setTextColor(92,90,85);
+        var insightTxt = 'Biggest improvement opportunity: '+safe(lowestCat3.cat.label)+' ('+lowestCat3.score+'%) — focus here first for maximum score impact.';
+        var iLines = doc.splitTextToSize(insightTxt, W-2*M);
+        iLines.forEach(function(l){ if(py3<H-15){doc.text(l,M,py3); py3+=5.5;} });
       }
 
       footer(3);
