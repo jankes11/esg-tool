@@ -86,16 +86,17 @@ ${industryContext}
 
 The category scores above show where this business is weakest. Focus your recommendations on the lowest-scoring categories first — not just on climate or environment if those are not the weakest areas.
 
-Write a short, practical improvement plan. Three sections:
+Write a concise, practical improvement plan. Use plain English. Three sections:
 
 ## Quick wins (next 1–3 months)
-2–3 specific, concrete actions targeting their actual gaps. Prioritise actions in the lowest-scoring category. Use industry-specific tools, frameworks or terminology where relevant. Do NOT suggest vague actions — be specific to their industry and gaps.
+2–3 actions. Format each as: **Action name.** One sentence why it matters. Estimated effort in brackets e.g. [2-3 hours, no cost].
+Prioritise the lowest-scoring category. Be industry-specific — not generic.
 
 ## Bigger priorities (next 6–12 months)
-2–3 medium-term actions realistic for a ${size || 'small'} business in ${industry || 'their sector'}.
+2–3 actions in the same format. Realistic for a ${size || 'small'} ${industry || 'business'}.
 
-## What mature ESG programmes typically include
-1–2 sentences describing practices commonly seen in organisations with well-developed ESG programmes in this sector — framed as observable practices, not invented statistics.
+## What mature programmes include
+1 sentence only — observable practices, no invented benchmarks or percentages.
 
 RULES:
 - Do not invent benchmark scores, sector averages, or percentage comparisons
@@ -125,7 +126,7 @@ RULES:
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 650,
+        max_tokens: 500,
         messages: [{ role: 'user', content: prompt }]
       })
     });
