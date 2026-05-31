@@ -1308,7 +1308,7 @@ function generatePDF() {
         doc.setFontSize(7.5); doc.setFont(undefined,'normal');
         doc.setTextColor(160,158,150);
         doc.text('myESGcheck.com  |  ESRS/VSME 2024 aligned  |  Self-assessment tool — not formal ESG assurance', M, H-4);
-        doc.text('Page '+pageNum+' / 9', W-M, H-4, {align:'right'});
+        doc.text('Page '+pageNum+' / 10', W-M, H-4, {align:'right'});
         doc.setTextColor(26,25,22);
       }
       function sectionHeader(title, section, subtitle) {
@@ -1668,36 +1668,127 @@ function generatePDF() {
         py3+=20;
       }
 
-      // ── Business impact (max 4, ~24mm) ─────────────────────────
-      var biItems3=getBusinessImpact(overall,industry);
-      if(biItems3.length>0 && py3+20 < H_CEIL){
-        var biMax3=Math.min(4,Math.floor((H_CEIL-py3-4)/6.5));
-        if(biMax3>0){
-          var biH3=8+biMax3*6.5;
-          doc.setFillColor(247,246,243); doc.setDrawColor(218,216,211); doc.setLineWidth(0.3);
-          doc.roundedRect(M,py3,W-2*M,biH3,3,3,'FD');
-          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-          doc.text('What this score means in practice',M+5,py3+6);
-          var biY3=py3+12;
-          biItems3.slice(0,biMax3).forEach(function(item){
-            var good=item.charAt(0)==='+';
-            doc.setFillColor(good?15:163,good?110:45,good?86:45);
-            doc.circle(M+5,biY3-1,1.3,'F');
-            doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(good?8:100,good?80:30,good?65:30);
-            doc.text(safe(item.slice(1).trim()),M+10,biY3);
-            biY3+=6.5;
-          });
-        }
+      footer(3);
+
+      // ═══════════════════════════════════════════════════
+      // PAGE 4: PROCUREMENT READINESS & BUSINESS IMPACT
+      // ═══════════════════════════════════════════════════
+      doc.addPage();
+      var y_pr = sectionHeader('Procurement readiness & score context', 3, 'How your business performs against key customer and procurement requirements');
+
+      // ── Procurement Readiness table ───────────────────────────
+      var procItems4 = [
+        { label:'Health & Safety policy',      catId:'social',     qi:0 },
+        { label:'Anti-bribery controls',        catId:'governance', qi:1 },
+        { label:'GDPR / data protection',       catId:'governance', qi:4 },
+        { label:'Supplier due diligence',       catId:'supply',     qi:0 },
+        { label:'Modern Slavery controls',      catId:'supply',     qi:5 },
+        { label:'Carbon / emissions baseline',  catId:'climate',    qi:0 },
+        { label:'Workforce data tracking',      catId:'social',     qi:6 },
+        { label:'Supplier ethics clauses',      catId:'supply',     qi:2 },
+        { label:'ESG owner / named lead',       catId:'governance', qi:2 },
+        { label:'Whistleblowing policy',        catId:'governance', qi:8 },
+      ];
+      var proc4Yes=0, proc4Part=0;
+      procItems4.forEach(function(pi){
+        var a=answers[pi.catId+'_'+pi.qi];
+        if(a==='yes') proc4Yes++;
+        else if(a==='partial') proc4Part++;
+      });
+      var proc4Score = Math.round((proc4Yes + proc4Part*0.5)/procItems4.length*100);
+      var proc4Col = proc4Score>=70?[15,110,86]:proc4Score>=40?[186,117,23]:[163,45,45];
+      var proc4Label = proc4Score>=70?'Strong readiness':proc4Score>=40?'Moderate readiness':'Needs work';
+
+      // Score header
+      doc.setFillColor(250,248,244); doc.setDrawColor(220,218,213); doc.setLineWidth(0.3);
+      doc.roundedRect(M, y_pr, W-2*M, 16, 3, 3, 'FD');
+      doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text('Procurement Readiness Score', M+5, y_pr+7);
+      doc.setFontSize(16); doc.setFont(undefined,'bold'); doc.setTextColor(proc4Col[0],proc4Col[1],proc4Col[2]);
+      doc.text(proc4Score+'%', M+98, y_pr+10);
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(proc4Col[0],proc4Col[1],proc4Col[2]);
+      doc.text(proc4Label, M+115, y_pr+10);
+      doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+      doc.text('Based on requirements commonly asked by customers, banks, and procurement teams', M+5, y_pr+14);
+      var pr4y = y_pr + 20;
+
+      // Table header
+      doc.setFillColor(245,244,240); doc.rect(M, pr4y, W-2*M, 7, 'F');
+      doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+      doc.text('REQUIREMENT', M+4, pr4y+5);
+      doc.text('STATUS', W-M-24, pr4y+5);
+      pr4y += 9;
+
+      procItems4.forEach(function(pi, pidx) {
+        var ans = answers[pi.catId+'_'+pi.qi];
+        var statusLabel = ans==='yes'?'In place':ans==='partial'?'Partial':ans==='na'?'N/A':'Gap';
+        var statusCol = ans==='yes'?[15,110,86]:ans==='partial'?[186,117,23]:[163,45,45];
+        var statusBg  = ans==='yes'?[225,245,238]:ans==='partial'?[250,238,220]:[252,235,235];
+        if(ans==='na'){ statusLabel='N/A'; statusCol=[130,128,122]; statusBg=[240,238,234]; }
+        if(pidx%2===0){ doc.setFillColor(252,251,250); doc.rect(M, pr4y-2, W-2*M, 10, 'F'); }
+        doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+        doc.text(safe(pi.label), M+4, pr4y+4);
+        doc.setFillColor(statusBg[0],statusBg[1],statusBg[2]);
+        doc.roundedRect(W-M-26, pr4y, 24, 7, 2, 2, 'F');
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(statusCol[0],statusCol[1],statusCol[2]);
+        doc.text(statusLabel, W-M-14, pr4y+5, {align:'center'});
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.2);
+        doc.line(M, pr4y+8, W-M, pr4y+8);
+        pr4y += 11;
+      });
+      pr4y += 6;
+
+      // ── What this score means in practice ────────────────────
+      var biItems4 = getBusinessImpact(overall, industry);
+      if (biItems4.length > 0 && pr4y < H-55) {
+        var biH4 = 10 + Math.min(biItems4.length, 5) * 7;
+        doc.setFillColor(247,246,243); doc.setDrawColor(220,218,213); doc.setLineWidth(0.3);
+        doc.roundedRect(M, pr4y, W-2*M, biH4, 3, 3, 'FD');
+        doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('What this score means in practice', M+5, pr4y+7);
+        var bi4y = pr4y+13;
+        biItems4.slice(0,5).forEach(function(item){
+          var good=item.charAt(0)==='+';
+          doc.setFillColor(good?15:163, good?110:45, good?86:45);
+          doc.circle(M+5, bi4y-1, 1.5,'F');
+          doc.setFontSize(8); doc.setFont(undefined,'normal');
+          doc.setTextColor(good?8:100, good?80:30, good?65:30);
+          doc.text(safe(item.slice(1).trim()), M+11, bi4y);
+          bi4y += 7;
+        });
+        pr4y += biH4 + 6;
       }
 
-      footer(3);
+      // ── ESG Improvement Pathway ───────────────────────────────
+      if (pr4y < H-35) {
+        doc.setFillColor(247,246,243); doc.setDrawColor(218,216,211); doc.setLineWidth(0.3);
+        doc.roundedRect(M, pr4y, W-2*M, 22, 3, 3, 'FD');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('Your ESG improvement pathway', M+5, pr4y+7);
+        var stW4=(W-2*M-10)/3;
+        [['WHERE YOU ARE', gradeLabel(overall)+' — '+overall+'%', gcArr],
+         ['NEXT STAGE', (nextBand3?nextBand3.label+' — '+nextBand3.min+'%+':'Leading band'), [186,117,23]],
+         ['AFTER HIGH ACTIONS', projMin+'-'+projMax+'% — '+bandLabel, [15,110,86]]
+        ].forEach(function(st,si){
+          var sx4=M+5+si*(stW4+2.5);
+          if(si>0){doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(200,198,194);doc.text('>',sx4-6,pr4y+16);}
+          doc.setFontSize(6); doc.setFont(undefined,'bold'); doc.setTextColor(160,158,150);
+          doc.text(st[0], sx4, pr4y+13);
+          doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(st[2][0],st[2][1],st[2][2]);
+          var stl4=doc.splitTextToSize(safe(st[1]), stW4-2);
+          doc.text(stl4[0]||'', sx4, pr4y+19);
+          if(stl4[1]) doc.text(stl4[1], sx4, pr4y+23);
+        });
+      }
+
+      footer(4);
 
 
       // ═══════════════════════════════════════════════════
       // PAGE 3: KEY FINDINGS — Gaps & Strengths
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y3 = sectionHeader('Key findings', 3, 'What the assessment revealed about your current ESG performance');
+      var y3 = sectionHeader('Key findings', 4, 'What the assessment revealed about your current ESG performance');
 
       // Stats row
       var statBoxes = [
@@ -1726,44 +1817,6 @@ function generatePDF() {
         doc.text(safe(gcSentence), M, y3+26);
       }
       var fy = y3 + 34;
-
-      // ── Procurement Readiness (uses fy) ──────────────────────
-      var procItems = [
-        { label:'Health & Safety policy',     catId:'social',      qi:0 },
-        { label:'Anti-bribery controls',       catId:'governance',  qi:1 },
-        { label:'GDPR / data protection',      catId:'governance',  qi:4 },
-        { label:'Supplier due diligence',      catId:'supply',      qi:0 },
-        { label:'Modern Slavery controls',     catId:'supply',      qi:5 },
-        { label:'Carbon / emissions baseline', catId:'climate',     qi:0 },
-        { label:'Workforce data tracking',     catId:'social',      qi:6 },
-      ];
-      var procYes=0;
-      procItems.forEach(function(pi){ if(answers[pi.catId+'_'+pi.qi]==='yes') procYes++; });
-      var procScore = Math.round(procYes/procItems.length*100);
-      var procColor = procScore>=70?[15,110,86]:procScore>=40?[186,117,23]:[163,45,45];
-      if (fy < H-70) {
-        doc.setFillColor(250,248,244); doc.setDrawColor(220,218,213); doc.setLineWidth(0.3);
-        doc.roundedRect(M, fy, W-2*M, 44, 3, 3, 'FD');
-        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text('Procurement Readiness', M+5, fy+7);
-        doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(procColor[0],procColor[1],procColor[2]);
-        doc.text(procScore+'%', W-M-5, fy+7, {align:'right'});
-        doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
-        doc.text('Key requirements checked by customers and procurement teams', M+5, fy+12);
-        var pry = fy+17;
-        procItems.forEach(function(pi, idx2) {
-          var ans = answers[pi.catId+'_'+pi.qi];
-          var tick = ans==='yes'?'YES':ans==='partial'?'PART':'NO';
-          var col = ans==='yes'?[15,110,86]:ans==='partial'?[186,117,23]:[163,45,45];
-          var col_x = idx2 < 4 ? M+5 : M+(W-2*M)/2+3;
-          var row_y = idx2 < 4 ? pry+idx2*6 : pry+(idx2-4)*6;
-          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
-          doc.text(tick, col_x, row_y);
-          doc.setFont(undefined,'normal'); doc.setTextColor(50,48,44);
-          doc.text(safe(pi.label), col_x+10, row_y);
-        });
-        fy += 48;
-      }
 
       // Gaps
       if (gaps.length > 0) {
@@ -1928,10 +1981,10 @@ function generatePDF() {
           fy += 5;
         }
       }
-      footer(4);
+      footer(5);
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y4 = sectionHeader('Prioritised action plan', 4, 'Your top actions ranked by impact and urgency');
+      var y4 = sectionHeader('Prioritised action plan', 5, 'Your top actions ranked by impact and urgency');
 
       // Column headers
       // Action plan: 3-column layout, no timeline overlap
@@ -2201,13 +2254,13 @@ function generatePDF() {
       doc.text('Next step', M+6, y4+7);
       doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
       wrapText('Review this action plan with your leadership team. Assign an owner and target date for each High priority item. Revisit this assessment in 6-12 months to track progress.', M+6, y4+13, W-2*M-12, 5, 2);
-      footer(5);;
+      footer(6);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 5: AI RECOMMENDATIONS
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y5 = sectionHeader('AI-powered recommendations', 5, 'Personalised guidance generated for '+safe(co));
+      var y5 = sectionHeader('AI-powered recommendations', 6, 'Personalised guidance generated for '+safe(co));
 
       // Get AI text from the visible results screen
       var aiEl = document.getElementById('ai-content');
@@ -2322,13 +2375,13 @@ function generatePDF() {
           y5 += 9;
         });
       }
-      footer(6);;
+      footer(7);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 6: CATEGORY DEEP DIVE
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y6 = sectionHeader('Category detail', 6, 'Your responses and scores for each ESG area');
+      var y6 = sectionHeader('Category detail', 7, 'Your responses and scores for each ESG area');
 
       catScoresArr.forEach(function(cs) {
         if (y6 > H-50) return;
@@ -2369,13 +2422,13 @@ function generatePDF() {
         });
         y6 += 4;
       });
-      footer(7);;
+      footer(8);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 7: ESRS / VSME ALIGNMENT (useful detail)
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y7 = sectionHeader('ESRS & VSME framework alignment', 7, 'How your business maps to EU sustainability reporting standards');
+      var y7 = sectionHeader('ESRS & VSME framework alignment', 8, 'How your business maps to EU sustainability reporting standards');
 
       // Intro
       doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
@@ -2434,13 +2487,13 @@ function generatePDF() {
         if (whyLines[1]) doc.text(whyLines[1], M+4, y7+33);
         y7 += 42;
       });
-      footer(8);;
+      footer(9);;
 
       // ═══════════════════════════════════════════════════
       // PAGE 8: NEXT STEPS & RESOURCES
       // ═══════════════════════════════════════════════════
       doc.addPage();
-      var y8 = sectionHeader('Next steps & useful resources', 8, 'Practical tools and guidance to help you act on this report');
+      var y8 = sectionHeader('Next steps & useful resources', 9, 'Practical tools and guidance to help you act on this report');
 
       // Quick wins box
       doc.setFillColor(225,245,238);
@@ -2533,7 +2586,7 @@ function generatePDF() {
       doc.text('Free ESG self-assessment for UK and EU SMEs  |  Aligned with ESRS Set 1 and EFRAG VSME 2024', M, y8+17);
       doc.setTextColor(79,185,140);
       doc.text('Retake this assessment annually to track your progress and demonstrate improvement to stakeholders.', M, y8+24);
-      footer(9);;
+      footer(10);;
 
       // Save
       var filename = (safe(co).replace(/[^a-zA-Z0-9]/g,'-').toLowerCase() || 'company') + '-esg-report.pdf';
