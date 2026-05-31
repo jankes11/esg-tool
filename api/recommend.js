@@ -96,7 +96,7 @@ Prioritise the lowest-scoring category. Be industry-specific — not generic.
 2–3 actions in the same format. Realistic for a ${size || 'small'} ${industry || 'business'}.
 
 ## What mature programmes include
-1 sentence only — observable practices, no invented benchmarks or percentages.
+2-3 sentences describing specific, observable practices seen in organisations with well-developed ESG in this sector. Be concrete: name what they measure, what documents they maintain, how they engage suppliers. No invented benchmarks or percentages.
 
 RULES:
 - Do not invent benchmark scores, sector averages, or percentage comparisons
