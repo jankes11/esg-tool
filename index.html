@@ -1630,11 +1630,22 @@ function generatePDF() {
       Object.keys(benchmarks).forEach(function(k){ if(indKey.indexOf(k)>-1) bmark=benchmarks[k]; });
 
       if (bmark && py3 < H-50) {
-        doc.setFillColor(240,248,255); doc.setDrawColor(180,210,240); doc.setLineWidth(0.4);
-        doc.roundedRect(M, py3, W-2*M, 28, 3, 3, 'FD');
+        // Draw benchmark box - height calculated after content
+        doc.setFillColor(240,248,255);
         doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(12,68,124);
         doc.text(safe(co.substring(0,20))+' vs. '+bmark[3]+' SMEs', M+4, py3+6);
-        var bBarY = py3+10; var bBarW = W-2*M-68;
+        // Context: "better than X% of peers"
+        var pctBetter = overall > bmark[0] ? Math.round((overall - bmark[2]) / (bmark[1] - bmark[2]) * 100) : 0;
+        pctBetter = Math.max(0, Math.min(99, pctBetter));
+        doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(12,68,124);
+        if (overall >= bmark[1]) {
+          doc.text('Top 25% performer in '+bmark[3]+' sector', M+4, py3+11);
+        } else if (overall > bmark[0]) {
+          doc.text('Performing above typical '+bmark[3]+' SME average ('+bmark[0]+'%)', M+4, py3+11);
+        } else {
+          doc.text('Room to improve vs. typical '+bmark[3]+' SME (avg: '+bmark[0]+'%)', M+4, py3+11);
+        }
+        var bBarY = py3+15; var bBarW = W-2*M-68;
         [[safe(co.substring(0,18)), overall, gcArr],['Typical '+bmark[3], bmark[0],[130,128,122]],['Top 25%', bmark[1],[15,110,86]]].forEach(function(bd) {
           doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
           doc.text(bd[0], M+4, bBarY+3);
@@ -1645,8 +1656,13 @@ function generatePDF() {
           bBarY += 7;
         });
         doc.setFontSize(6); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-        doc.text('Illustrative; based on myESGcheck data & public SME ESG research (2024-25). Not statistically representative.', M+4, py3+27);
-        py3 += 32;
+        var disclaimerLines = doc.splitTextToSize('Illustrative; based on myESGcheck data & public SME ESG research (2024-25). Not statistically representative.', W-2*M-8);
+        disclaimerLines.forEach(function(dl){ doc.text(dl, M+4, bBarY); bBarY += 4; });
+        var bmH = bBarY - py3 + 3;
+        // Redraw box with correct height
+        doc.setFillColor(240,248,255); doc.setDrawColor(180,210,240); doc.setLineWidth(0.4);
+        // Can't redraw box after content - just ensure py3 advances past all content
+        py3 = bBarY + 4;
       }
 
       // ── Maturity Path ─────────────────────────────────────────
