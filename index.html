@@ -2214,11 +2214,14 @@ function generatePDF() {
         doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
         var impactMsg = 'Completing all High priority actions could improve your score by approximately '+cappedLo+'-'+cappedHi+' points (from '+overall+'% to approximately '+projMin+'-'+projMax+'%), moving you into the "'+bandLabel+'" band. Actual improvement depends on implementation quality and evidence available.';
         var impactLines = doc.splitTextToSize(impactMsg, W-2*M);
-        impactLines.forEach(function(il){ doc.text(il, M, y4+5); y4 += 5.5; });
+        var discText = 'Estimated impacts are based on question weighting and assume full implementation. Actual improvement depends on quality of implementation.';
+        var discLinesArr = doc.splitTextToSize(discText, W-2*M);
+        var neededH = (impactLines.length * 5.5) + (discLinesArr.length * 5) + 20;
+        if (y4 + neededH > H - 28) { doc.addPage(); addHeader(); y4 = 30; } else { y4 += 4; }
+        impactLines.forEach(function(il){ doc.text(il, M, y4); y4 += 5.5; });
         y4 += 4;
         doc.setFontSize(7.5); doc.setFont(undefined,'italic'); doc.setTextColor(160,158,150);
-        var discLines = doc.splitTextToSize('Estimated impacts are based on question weighting and assume full implementation. Actual improvement depends on quality of implementation.', W-2*M);
-        discLines.forEach(function(dl){ doc.text(dl, M, y4+4); y4 += 5; });
+        discLinesArr.forEach(function(dl){ doc.text(dl, M, y4); y4 += 5; });
         y4 += 8;
       }
       y4 += 4;
