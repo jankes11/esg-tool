@@ -804,7 +804,11 @@ Keep the whole response under 200 words. Be direct and encouraging — not preac
     el.classList.remove('ai-loading');
     el.innerHTML = formatAI(data.text || 'Unable to generate recommendations.');
   } catch (e) {
-    if (el) { el.classList.remove('ai-loading'); el.textContent = 'AI recommendations temporarily unavailable.'; }
+    console.error('AI fetch error:', e);
+    if (el) { 
+      el.classList.remove('ai-loading'); 
+      el.innerHTML = '<p style="color:var(--muted);font-style:italic;font-size:.875rem">AI recommendations could not be generated. Your action plan above contains your personalised recommendations based on your answers.</p>';
+    }
   }
 }
 
@@ -2217,12 +2221,17 @@ function generatePDF() {
         var discText = 'Estimated impacts are based on question weighting and assume full implementation. Actual improvement depends on quality of implementation.';
         var discLinesArr = doc.splitTextToSize(discText, W-2*M);
         var neededH = (impactLines.length * 5.5) + (discLinesArr.length * 5) + 20;
-        y4 += 6; // render impact summary at current position, no page break
-        impactLines.forEach(function(il){ doc.text(il, M, y4); y4 += 5.5; });
-        y4 += 4;
+        y4 += 6; // render impact summary at current position
+        // Only render lines that fit above footer
+        impactLines.forEach(function(il){ 
+          if (y4 < H-22) { doc.text(il, M, y4); y4 += 5.5; }
+        });
+        y4 += 3;
         doc.setFontSize(7.5); doc.setFont(undefined,'italic'); doc.setTextColor(160,158,150);
-        discLinesArr.forEach(function(dl){ doc.text(dl, M, y4); y4 += 5; });
-        y4 += 8;
+        discLinesArr.forEach(function(dl){ 
+          if (y4 < H-22) { doc.text(dl, M, y4); y4 += 5; }
+        });
+        y4 += 6;
       }
       y4 += 4;
       doc.setFillColor(225,245,238);
