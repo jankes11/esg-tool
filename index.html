@@ -1655,34 +1655,59 @@ function generatePDF() {
       py3 += sbH3 + 5;
 
       // ════════════════════════════════════════════════
-      // ROW 3: Benchmark (full width, ~32mm)
+      // ROW 3: Benchmark (full width, ~38mm)
       // ════════════════════════════════════════════════
-      if(bmark3 && py3 < H-35){
-        var ctxLine3 = overall>=bmark3[1] ? 'Top 25% performer in '+bmark3[2]+' sector — excellent position for ESG-sensitive tenders.' :
-                       overall>bmark3[0]  ? 'Above typical '+bmark3[2]+' SME (avg '+bmark3[0]+'%). Need +'+(bmark3[1]-overall)+' pts to reach top 25%.' :
-                       'Below typical '+bmark3[2]+' avg. Top 25% is '+bmark3[1]+'% — +'+(bmark3[1]-overall)+' pts to close the gap.';
-        doc.setFillColor(237,245,255); doc.setDrawColor(180,210,240); doc.setLineWidth(0.3);
-        var bmH3 = 32;
+      if(bmark3 && py3 < H-45){
+        var ctxLine3 = overall>=bmark3[1] ?
+          'Top 25% performer in '+bmark3[2]+' sector — strong position for ESG-sensitive tenders.' :
+          overall>bmark3[0] ?
+          'Above typical '+bmark3[2]+' SME average ('+bmark3[0]+'%). Need +'+(bmark3[1]-overall)+' more points to reach top 25%.' :
+          'Below typical '+bmark3[2]+' average. Top 25% is '+bmark3[1]+'% — +'+(bmark3[1]-overall)+' points to close the gap.';
+
+        // Layout constants - keep % labels INSIDE the box
+        var bbLabelW = 42;  // width reserved for label text on left
+        var bbPctW   = 14;  // width reserved for % on right
+        var bbBarW   = W-2*M-8-bbLabelW-bbPctW; // bar width fits inside
+        var bbBarX   = M+4+bbLabelW;
+
+        var bmH3 = 10 + 8 + 3*8 + 6; // title(10) + ctx(8) + 3bars(24) + disclaimer(6) = 48mm
+        doc.setFillColor(237,245,255); doc.setDrawColor(180,210,240); doc.setLineWidth(0.4);
         doc.roundedRect(M, py3, W-2*M, bmH3, 3,3,'FD');
-        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(12,68,124);
-        doc.text(safe(co.substring(0,22))+' vs. '+bmark3[2]+' SMEs', M+4, py3+7);
+
+        // Title
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(12,68,124);
+        doc.text(safe(co.substring(0,24))+' vs. '+bmark3[2]+' SMEs', M+4, py3+7);
+
+        // Context line
         doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(55,100,160);
-        doc.text(safe(ctxLine3), M+4, py3+12);
-        var bbY3=py3+15; var bbW3=W-2*M-62;
-        [[safe(co.substring(0,18)),overall,gcArr],
-         ['Typical '+bmark3[2],bmark3[0],[130,128,122]],
-         ['Top 25%',bmark3[1],[15,110,86]]
+        var ctxLines = doc.splitTextToSize(safe(ctxLine3), W-2*M-8);
+        doc.text(ctxLines[0]||'', M+4, py3+13);
+
+        // Bars - each row: label | bar | %value all within box
+        var bbY3 = py3+18;
+        [[safe(co.substring(0,18)), overall, gcArr],
+         ['Typical '+bmark3[2],     bmark3[0], [130,128,122]],
+         ['Top 25%',                bmark3[1], [15,110,86]]
         ].forEach(function(bd){
+          // Label
           doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(50,48,44);
-          doc.text(bd[0], M+4, bbY3+2.5);
-          doc.setFillColor(225,223,218); doc.roundedRect(M+58,bbY3,bbW3,4,1,1,'F');
-          doc.setFillColor(bd[2][0],bd[2][1],bd[2][2]); doc.roundedRect(M+58,bbY3,bbW3*bd[1]/100,4,1,1,'F');
+          doc.text(safe(bd[0]).substring(0,18), M+4, bbY3+3);
+          // Bar track
+          doc.setFillColor(215,225,240);
+          doc.roundedRect(bbBarX, bbY3, bbBarW, 5, 1,1,'F');
+          // Bar fill
+          doc.setFillColor(bd[2][0],bd[2][1],bd[2][2]);
+          doc.roundedRect(bbBarX, bbY3, bbBarW*Math.min(bd[1],100)/100, 5, 1,1,'F');
+          // % value - right of bar, INSIDE box
           doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(bd[2][0],bd[2][1],bd[2][2]);
-          doc.text(bd[1]+'%', M+58+bbW3+3, bbY3+3);
-          bbY3+=7;
+          doc.text(bd[1]+'%', bbBarX+bbBarW+2, bbY3+4, {align:'left'});
+          bbY3 += 8;
         });
-        doc.setFontSize(5.5); doc.setFont(undefined,'normal'); doc.setTextColor(180,178,172);
-        doc.text('Illustrative; myESGcheck & public SME ESG data 2024-25. Not statistically representative.', M+4, py3+bmH3-2);
+
+        // Disclaimer at bottom of box
+        doc.setFontSize(5.5); doc.setFont(undefined,'normal'); doc.setTextColor(150,148,142);
+        doc.text('Illustrative; based on myESGcheck & public SME ESG research 2024-25. Not statistically representative.', M+4, py3+bmH3-2);
+
         py3 += bmH3 + 5;
       }
 
