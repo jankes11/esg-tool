@@ -1422,111 +1422,100 @@ function generatePDF() {
       doc.addPage();
       var ym = sectionHeader('How your score is calculated', 1, 'Transparent scoring methodology — so you understand exactly what your results mean');
 
-      // Scoring table
+      // ── Intro ──────────────────────────────────────────────
       doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-      ym = wrapText('Each of the '+CATEGORIES.reduce(function(a,c2){return a+c2.questions.length;},0)+' questions in this assessment is scored on a simple 0-1 scale. Your category scores and overall score are calculated as weighted averages of your answers within each area.', M, ym, W-2*M, 5.5, 3);
-      ym += 8;
+      var introLines = doc.splitTextToSize('Each of the '+CATEGORIES.reduce(function(a,c2){return a+c2.questions.length;},0)+' questions is scored 0–1. Category scores are weighted averages. Overall score is the average of all 5 category scores.', W-2*M);
+      introLines.forEach(function(l){ doc.text(l, M, ym); ym += 5; });
+      ym += 4;
 
-      // Answer table
-      var tHeaders = ['Your answer','Points awarded','What it means'];
-      var tRows = [
-        ['Yes — fully in place','1.0 point','This practice is established and active in your business'],
-        ['Partial — in progress','0.5 points','You have started but not fully implemented this practice'],
-        ['No — not yet started','0.0 points','This is a gap requiring action'],
-        ['N/A — not applicable','Excluded','This question does not apply to your business type or size'],
+      // ── Answer table (compact, 4 rows × 9mm) ───────────────
+      var tRows2 = [
+        ['Yes — fully in place',    '1.0 point',  'Practice established and active',           [15,110,86],  [225,245,238]],
+        ['Partial — in progress',   '0.5 points', 'Started but not fully implemented',         [186,117,23], [250,238,220]],
+        ['No — not yet started',    '0.0 points', 'Gap requiring action',                      [163,45,45],  [252,235,235]],
+        ['N/A — not applicable',    'Excluded',   'Does not apply to your business type/size', [130,128,122],[240,238,234]],
       ];
-      var tColW = [52, 38, W-2*M-52-38-4];
-      var tX = [M, M+54, M+94];
-
-      // Table header
+      // Header
       doc.setFillColor(4,52,44);
-      doc.rect(M, ym, W-2*M, 9, 'F');
+      doc.rect(M, ym, W-2*M, 8, 'F');
       doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
-      tHeaders.forEach(function(h,i){ doc.text(h, tX[i]+3, ym+6); });
-      ym += 11;
-
-      tRows.forEach(function(row, ri) {
-        if (ri%2===0) { doc.setFillColor(250,250,249); } else { doc.setFillColor(255,255,255); }
-        doc.rect(M, ym-2, W-2*M, 11, 'F');
-        doc.setFontSize(8); doc.setFont(undefined, ri===0||ri===1?'bold':'normal');
-        var tRowColor = ri===2?[163,45,45]:ri===1?[186,117,23]:ri===0?[15,110,86]:[130,128,122];
-        doc.setTextColor(tRowColor[0],tRowColor[1],tRowColor[2]);
-        doc.text(safe(row[0]), tX[0]+3, ym+5);
+      doc.text('Your answer', M+3, ym+5.5);
+      doc.text('Points', M+72, ym+5.5);
+      doc.text('What it means', M+102, ym+5.5);
+      ym += 9;
+      tRows2.forEach(function(row) {
+        doc.setFillColor(row[4][0],row[4][1],row[4][2]);
+        doc.rect(M, ym, W-2*M, 9, 'F');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(row[3][0],row[3][1],row[3][2]);
+        doc.text(row[0], M+3, ym+6);
         doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text(safe(row[1]), tX[1]+3, ym+5);
-        doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-        doc.text(safe(row[2]), tX[2]+3, ym+5);
-        doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
-        doc.line(M, ym+9, W-2*M+M, ym+9);
-        ym += 12;
+        doc.text(row[1], M+72, ym+6);
+        doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
+        doc.text(row[2], M+102, ym+6);
+        doc.setDrawColor(220,218,214); doc.setLineWidth(0.25);
+        doc.line(M, ym+9, M+W-2*M, ym+9);
+        ym += 9;
       });
+      ym += 5;
 
-      ym += 8;
-
-      // Formula box
-      doc.setFillColor(225,245,238);
-      doc.roundedRect(M, ym, W-2*M, 22, 3, 3, 'F');
-      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
-      doc.text('Score formula', M+6, ym+8);
+      // ── Formula box (compact, 16mm) ─────────────────────────
+      doc.setFillColor(225,245,238); doc.setDrawColor(160,215,190); doc.setLineWidth(0.4);
+      doc.roundedRect(M, ym, W-2*M, 16, 3,3,'FD');
+      doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(8,80,65);
+      doc.text('Score formula', M+5, ym+6);
       doc.setFont(undefined,'normal'); doc.setTextColor(15,110,86);
-      doc.text('Category score = weighted sum of points / weighted count of applicable questions x 100', M+6, ym+12);
-      doc.text('Overall score = average of all 5 weighted category scores (N/A answers excluded from calculation)', M+6, ym+18);
-      ym += 30;
+      doc.text('Category = weighted sum of points / weighted count of answered questions × 100', M+5, ym+11);
+      doc.text('Overall = average of all 5 category scores (N/A excluded)', M+5, ym+15);
+      ym += 20;
 
-      // Weight bands table
+      // ── Question weighting (4 bands × 17mm) ────────────────
       doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
       doc.text('Question weighting', M, ym); ym += 7;
-      var wBands = [
-        ['Critical (weight x3)', 'Questions where failure creates immediate legal, financial, or procurement risk.', 'H&S policy, Anti-bribery, Supply chain forced labour checks'],
-        ['Important (weight x2)', 'Questions strongly aligned to ESRS/VSME disclosure requirements.', 'Emissions baseline, Climate risk, Grievance mechanism, GDPR, ESG owner'],
-        ['Standard (weight x1)', 'Good practice questions relevant to most SMEs.', 'Waste tracking, Staff training, Stakeholder engagement, Supplier selection'],
-        ['Lower weight (x0.5)', 'Questions where No is not necessarily an ESG failure for many SMEs.', 'Community engagement, Inclusive procurement'],
+      var wData = [
+        ['Critical (weight ×3)', 'Failure creates immediate legal, financial, or procurement risk.',       'H&S policy, Anti-bribery, Supply chain labour checks',          [163,45,45],  [252,235,235]],
+        ['Important (weight ×2)', 'Strongly aligned to ESRS/VSME disclosure requirements.',               'Emissions baseline, Climate risk, Grievance mechanism, GDPR',   [186,117,23], [250,238,220]],
+        ['Standard (weight ×1)', 'Good practice relevant to most SMEs.',                                  'Waste tracking, Staff training, Stakeholder engagement',        [15,110,86],  [225,245,238]],
+        ['Lower weight (×0.5)',  'No is not necessarily an ESG failure for many SMEs.',                  'Community engagement, Inclusive procurement',                   [130,128,122],[240,238,234]],
       ];
-      var wColors = [[163,45,45],[186,117,23],[15,110,86],[130,128,122]];
-      var wBgs = [[252,235,235],[250,238,220],[225,245,238],[240,238,234]];
-      wBands.forEach(function(wb, wi) {
-        if (ym > H-25) return;
-        doc.setFillColor(wBgs[wi][0],wBgs[wi][1],wBgs[wi][2]);
-        doc.roundedRect(M, ym, W-2*M, 15, 2, 2, 'F');
-        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(wColors[wi][0],wColors[wi][1],wColors[wi][2]);
-        doc.text(safe(wb[0]), M+4, ym+6);
+      wData.forEach(function(wb) {
+        doc.setFillColor(wb[4][0],wb[4][1],wb[4][2]);
+        doc.roundedRect(M, ym, W-2*M, 15, 2,2,'F');
+        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(wb[3][0],wb[3][1],wb[3][2]);
+        doc.text(wb[0], M+4, ym+6);
         doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52); doc.setFontSize(7);
-        doc.text(safe(wb[1]), M+4, ym+11);
+        doc.text(wb[1], M+4, ym+11);
         doc.setTextColor(130,128,122); doc.setFontSize(6.5);
-        var exl = doc.splitTextToSize('Eg: '+safe(wb[2]), W-2*M-8);
-        doc.text(exl[0]||'', M+4, ym+14.5);
-        ym += 17;
+        doc.text('e.g. '+wb[2], M+4, ym+14.5);
+        ym += 16;
       });
-      ym += 6;
+      ym += 5;
 
-      // Score bands table
+      // ── Score bands (5 rows × 12mm) ────────────────────────
       doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('Score bands', M, ym);
-      ym += 8;
-
-      var bands = [
-        [80,100,'Leading','Strong performance. You can confidently respond to customer ESG requests and most supplier audits.',[15,110,86],[225,245,238]],
-        [60,79,'Progressing','Above average. You are likely to satisfy most basic customer ESG questionnaires. Some gaps remain for larger customers.',[29,158,117],[220,240,232]],
-        [40,59,'Developing','Typical for SMEs starting their ESG journey. Key gaps may affect procurement eligibility.',[186,117,23],[250,238,220]],
-        [20,39,'Starting out','Significant gaps. Likely to struggle with ESG questions from banks, investors, or larger customers.',[153,60,29],[248,232,220]],
-        [0,19,'Needs action','Critical gaps present. ESG requirements from customers and regulators will be difficult to meet.',[163,45,45],[252,235,235]],
+      doc.text('Score bands', M, ym); ym += 6;
+      var bData = [
+        [80,100,'Leading',      'Strong performance. Well-placed to respond to customer ESG requests and most supplier audits.',          [15,110,86],  [225,245,238]],
+        [60,79, 'Progressing',  'Above average. Likely to satisfy most basic ESG questionnaires. Some gaps remain for larger customers.', [29,158,117], [220,240,232]],
+        [40,59, 'Developing',   'Typical for SMEs starting their ESG journey. Key gaps may affect procurement eligibility.',             [186,117,23], [250,238,220]],
+        [20,39, 'Starting out', 'Significant gaps. ESG questions from banks, investors, or larger customers will be challenging.',       [153,60,29],  [248,232,220]],
+        [0, 19, 'Needs action', 'Critical gaps. ESG requirements from customers and regulators will be difficult to meet.',             [163,45,45],  [252,235,235]],
       ];
-      bands.forEach(function(band, bi) {
+      bData.forEach(function(band) {
         doc.setFillColor(band[5][0],band[5][1],band[5][2]);
-        doc.roundedRect(M, ym, W-2*M, 12, 2, 2, 'F');
+        doc.roundedRect(M, ym, W-2*M, 11, 2,2,'F');
         doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(band[4][0],band[4][1],band[4][2]);
-        doc.text(band[0]+'-'+band[1]+'%  '+band[2], M+4, ym+8);
-        doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52);
-        doc.text(safe(band[3]), M+52, ym+8);
-        ym += 14;
+        doc.text(band[0]+'-'+band[1]+'%  '+band[2], M+4, ym+7.5);
+        doc.setFont(undefined,'normal'); doc.setTextColor(60,58,52); doc.setFontSize(7);
+        var descL = doc.splitTextToSize(band[3], W-2*M-52);
+        doc.text(descL[0]||'', M+52, ym+7.5);
+        ym += 12;
       });
+      ym += 4;
 
-      ym += 6;
-      doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
-      doc.text('Your score: '+overall+'% — '+gradeLabel(overall), M, ym);
-      ym += 6;
-      doc.setFontSize(7.5); doc.setTextColor(130,128,122);
-      wrapText('Important: This assessment measures ESG management practices and preparedness. It is not a determination of ESRS, CSRD, or legal compliance.', M, ym, W-2*M, 5, 2);
+      // ── Disclaimer ──────────────────────────────────────────
+      doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
+      doc.text('Your score: '+overall+'% — '+gradeLabel(overall)+' | This assessment measures ESG management practices. Not a determination of ESRS, CSRD, or legal compliance.', M, ym);
+
       footer(2);;
 
       // already handled above
