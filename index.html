@@ -1715,47 +1715,6 @@ function generatePDF() {
         doc.text(sb.label, sx+8, y3+19);
       });
 
-      // ── Procurement Readiness mini-table ──────────────────
-      var procItems = [
-        { label:'Health & Safety policy',     catId:'social',      qi:0 },
-        { label:'Anti-bribery controls',       catId:'governance',  qi:1 },
-        { label:'GDPR / data protection',      catId:'governance',  qi:4 },
-        { label:'Supplier due diligence',      catId:'supply',      qi:0 },
-        { label:'Modern Slavery controls',     catId:'supply',      qi:5 },
-        { label:'Carbon / emissions baseline', catId:'climate',     qi:0 },
-        { label:'Workforce data tracking',     catId:'social',      qi:6 },
-      ];
-      var procYes=0, procTotal=procItems.length;
-      procItems.forEach(function(pi){ if(answers[pi.catId+'_'+pi.qi]==='yes') procYes++; });
-      var procScore = Math.round(procYes/procTotal*100);
-      var procColor = procScore>=70?[15,110,86]:procScore>=40?[186,117,23]:[163,45,45];
-
-      doc.setFillColor(250,248,244); doc.setDrawColor(220,218,213); doc.setLineWidth(0.3);
-      doc.roundedRect(M, y3+30, W-2*M, 48, 3, 3, 'FD');
-      doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-      doc.text('Procurement Readiness', M+5, y3+37);
-      doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(procColor[0],procColor[1],procColor[2]);
-      doc.text(procScore+'%', W-M-5, y3+37, {align:'right'});
-      doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
-      doc.text('Key requirements checked by customers and procurement teams', M+5, y3+42);
-
-      var pry = y3+46;
-      procItems.forEach(function(pi, idx) {
-        var ans = answers[pi.catId+'_'+pi.qi];
-        var tick = ans==='yes' ? '✓' : ans==='partial' ? '○' : '✗';
-        var col = ans==='yes'?[15,110,86]:ans==='partial'?[186,117,23]:[163,45,45];
-        var col2 = ans==='yes'?[15,110,86]:ans==='partial'?[186,117,23]:[163,45,45];
-        var col3 = ans==='yes'?[225,245,238]:ans==='partial'?[250,238,220]:[252,235,235];
-        // Two columns
-        var col_x = idx < 4 ? M+5 : M + (W-2*M)/2 + 3;
-        var row_y = idx < 4 ? pry + idx*5.5 : pry + (idx-4)*5.5;
-        doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
-        doc.text(tick, col_x, row_y);
-        doc.setFont(undefined,'normal'); doc.setTextColor(50,48,44);
-        doc.text(safe(pi.label), col_x+6, row_y);
-      });
-      var fy = y3+30+52;
-
       // Gap insight — based on LOWEST SCORE (not gap count)
       var sortedByScore = catScoresArr
         .filter(function(x){ return x.score !== null; })
@@ -1766,7 +1725,45 @@ function generatePDF() {
         doc.setFontSize(8.5); doc.setFont(undefined,'italic'); doc.setTextColor(92,90,85);
         doc.text(safe(gcSentence), M, y3+26);
       }
-      // fy set by procurement table above
+      var fy = y3 + 34;
+
+      // ── Procurement Readiness (uses fy) ──────────────────────
+      var procItems = [
+        { label:'Health & Safety policy',     catId:'social',      qi:0 },
+        { label:'Anti-bribery controls',       catId:'governance',  qi:1 },
+        { label:'GDPR / data protection',      catId:'governance',  qi:4 },
+        { label:'Supplier due diligence',      catId:'supply',      qi:0 },
+        { label:'Modern Slavery controls',     catId:'supply',      qi:5 },
+        { label:'Carbon / emissions baseline', catId:'climate',     qi:0 },
+        { label:'Workforce data tracking',     catId:'social',      qi:6 },
+      ];
+      var procYes=0;
+      procItems.forEach(function(pi){ if(answers[pi.catId+'_'+pi.qi]==='yes') procYes++; });
+      var procScore = Math.round(procYes/procItems.length*100);
+      var procColor = procScore>=70?[15,110,86]:procScore>=40?[186,117,23]:[163,45,45];
+      if (fy < H-70) {
+        doc.setFillColor(250,248,244); doc.setDrawColor(220,218,213); doc.setLineWidth(0.3);
+        doc.roundedRect(M, fy, W-2*M, 44, 3, 3, 'FD');
+        doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+        doc.text('Procurement Readiness', M+5, fy+7);
+        doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(procColor[0],procColor[1],procColor[2]);
+        doc.text(procScore+'%', W-M-5, fy+7, {align:'right'});
+        doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
+        doc.text('Key requirements checked by customers and procurement teams', M+5, fy+12);
+        var pry = fy+17;
+        procItems.forEach(function(pi, idx2) {
+          var ans = answers[pi.catId+'_'+pi.qi];
+          var tick = ans==='yes'?'YES':ans==='partial'?'PART':'NO';
+          var col = ans==='yes'?[15,110,86]:ans==='partial'?[186,117,23]:[163,45,45];
+          var col_x = idx2 < 4 ? M+5 : M+(W-2*M)/2+3;
+          var row_y = idx2 < 4 ? pry+idx2*6 : pry+(idx2-4)*6;
+          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(col[0],col[1],col[2]);
+          doc.text(tick, col_x, row_y);
+          doc.setFont(undefined,'normal'); doc.setTextColor(50,48,44);
+          doc.text(safe(pi.label), col_x+10, row_y);
+        });
+        fy += 48;
+      }
 
       // Gaps
       if (gaps.length > 0) {
