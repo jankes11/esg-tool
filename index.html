@@ -1602,51 +1602,11 @@ function generatePDF() {
         'PRELIMINARY SCORE — based on '+completionPct+'% completion ('+answeredQs+' of '+totalQs+' questions answered). Complete the remaining questions for a full assessment. ' :
         '';
       var scoreDesc = scorePrefix + 'An overall score of '+overall+'% places '+safe(co)+' in the "'+gradeLabel(overall)+'" band for this self-assessment. ';
-      if (overall < 40) scoreDesc += 'At this score, there are significant ESG gaps to address. Most quick wins cost nothing but time and a written document.';
+      if (overall < 40) scoreDesc += 'Significant gaps to address. Most quick wins cost nothing but time and a written document.';
       else if (overall < 60) scoreDesc += 'At this score, you are likely to satisfy many basic customer ESG questionnaires, but may struggle with more detailed supplier questionnaires from large corporates. Closing your gaps now will significantly strengthen your ESG position.';
       else if (overall < 80) scoreDesc += 'You are performing well. At this score, you are well-placed to respond to most customer ESG requests. Formalising remaining gaps will make you audit-ready.';
       else scoreDesc += 'You are performing at a leading level. Your ESG performance is a genuine competitive advantage for winning contracts and demonstrating responsibility to customers and investors.';
-      // Score breakdown table
-      var sb_table_y = sb_y + 36;
-      if (sb_table_y < H - 55) {
-        doc.setFillColor(247,246,243);
-        doc.rect(M, sb_table_y, W-2*M, 7, 'F');
-        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
-        doc.text('AREA', M+3, sb_table_y+5);
-        doc.text('SCORE', M+88, sb_table_y+5);
-        doc.text('WEIGHT', M+115, sb_table_y+5);
-        doc.text('CONTRIBUTION', M+142, sb_table_y+5);
-        var sbt_y = sb_table_y + 9;
-        var totalContrib = 0;
-        catScoresArr.forEach(function(cs, ci) {
-          var sc = cs.score === null ? 0 : cs.score;
-          var contrib = (sc * 0.2).toFixed(1);
-          totalContrib += parseFloat(contrib);
-          if (ci%2===0) { doc.setFillColor(252,252,251); doc.rect(M, sbt_y-2, W-2*M, 8, 'F'); }
-          doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34);
-          doc.text(safe(cs.cat.label), M+3, sbt_y+3.5);
-          var scCol = scoreColorArr(cs.score);
-          doc.setFont(undefined,'bold'); doc.setTextColor(scCol[0],scCol[1],scCol[2]);
-          doc.text(cs.score===null?'N/A':sc+'%', M+88, sbt_y+3.5);
-          doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
-          doc.text('20%', M+115, sbt_y+3.5);
-          doc.setTextColor(40,38,34);
-          doc.text(contrib+' pts', M+142, sbt_y+3.5);
-          doc.setDrawColor(232,230,225); doc.setLineWidth(0.2);
-          doc.line(M, sbt_y+6, W-M, sbt_y+6);
-          sbt_y += 9;
-        });
-        doc.setFillColor(240,238,234); doc.rect(M, sbt_y-2, W-2*M, 8, 'F');
-        doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text('Overall score', M+3, sbt_y+3.5);
-        doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
-        doc.text(overall+'%', M+88, sbt_y+3.5);
-        doc.setTextColor(130,128,122); doc.setFont(undefined,'normal');
-        doc.text('100%', M+115, sbt_y+3.5);
-        doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
-        doc.text(totalContrib.toFixed(1)+' pts', M+142, sbt_y+3.5);
-        sbt_y += 12; // mark end of table
-      }
+
 
       var lowestCat = catScoresArr.reduce(function(a,b){
         if (a.score===null) return b; if (b.score===null) return a;
@@ -1686,7 +1646,7 @@ function generatePDF() {
           doc.setFontSize(6); doc.setFont(undefined,'normal'); doc.setTextColor(130,128,122);
           doc.text(band+'%', mx-3, _sby+9);
         });
-        _sby += 14;
+        _sby += 11;
       }
 
       // Industry benchmark comparison bars
@@ -1707,9 +1667,9 @@ function generatePDF() {
       if (bmark && bmy < H-55) {
         doc.setFillColor(240,248,255);
         doc.setDrawColor(180,210,240); doc.setLineWidth(0.4);
-        doc.roundedRect(M, bmy, W-2*M, 34, 3, 3, 'FD');
+        doc.roundedRect(M, bmy, W-2*M, 26, 3, 3, 'FD');
         doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(12,68,124);
-        doc.text(safe(co.substring(0,18))+' vs. '+bmark[3]+' SMEs', M+5, bmy+7);
+        doc.text(safe(co.substring(0,18))+' vs. '+bmark[3]+' SMEs', M+5, bmy+6);
         var barRows = [
           [safe(co), overall, gcArr],
           ['Typical '+bmark[3]+' SME', bmark[0], [130,128,122]],
@@ -1725,11 +1685,11 @@ function generatePDF() {
           doc.roundedRect(M+68,bBarY,bBarW*bd[1]/100,4,1,1,'F');
           doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(bd[2][0],bd[2][1],bd[2][2]);
           doc.text(bd[1]+'%', M+68+bBarW+3, bBarY+3);
-          bBarY += 8;
+          bBarY += 7;
         });
         doc.setFontSize(6.5); doc.setFont(undefined,'normal'); doc.setTextColor(160,158,150);
         doc.text('Illustrative benchmark derived from myESGcheck assessments and public SME ESG research (2024-25). Individual scores vary by business size, subcontractor use and sector specialisation. Benchmarks are indicative and not statistically representative of the entire sector.', M+5, bmy+32);
-        bmy += 38;
+        bmy += 30;
       }
 
       // ESG Maturity Path box
@@ -1737,7 +1697,7 @@ function generatePDF() {
       if (mpY < H - 55) {
         doc.setFillColor(247,246,243);
         doc.setDrawColor(225,224,220); doc.setLineWidth(0.4);
-        doc.roundedRect(M, mpY, W-2*M, 28, 3, 3, 'FD');
+        doc.roundedRect(M, mpY, W-2*M, 22, 3, 3, 'FD');
         doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
         doc.text('Your ESG maturity path', M+5, mpY+7);
         var stages = [
@@ -1760,29 +1720,30 @@ function generatePDF() {
           if (stLines[1]) doc.text(stLines[1], stX, mpY+24);
           stX += stW + 2;
         });
-        bmy = mpY + 32;
+        bmy = mpY + 26;
       }
 
       // Business impact box
       var bimpactItems = getBusinessImpact(overall, industry);
       // Force business impact onto same page or continue on next
-      if (bmy > H - 60) { doc.addPage(); bmy = 22; }
+      if (bmy > H - 52) { footer(3); doc.addPage(); bmy = 22; }
       if (bimpactItems.length > 0) {
-        var biH = 10 + bimpactItems.length * 7;
+        var biMaxItems = Math.min(bimpactItems.length, 4);
+        var biH = 9 + biMaxItems * 6.5;
         doc.setFillColor(247,246,243);
         doc.setDrawColor(225,224,220); doc.setLineWidth(0.4);
         doc.roundedRect(M, bmy, W-2*M, biH, 3, 3, 'FD');
         doc.setFontSize(8); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
         doc.text('What this score means in practice', M+5, bmy+7);
         var biLineY = bmy+13;
-        bimpactItems.forEach(function(item) {
+        bimpactItems.slice(0, biMaxItems).forEach(function(item) {
           var good = item.charAt(0)==='+';
           doc.setFillColor(good?15:163, good?110:45, good?86:45);
           doc.circle(M+5, biLineY-1, 1.5, 'F');
           doc.setFontSize(7.5); doc.setFont(undefined,'normal');
           doc.setTextColor(good?8:100, good?80:30, good?65:30);
           doc.text(safe(item.slice(1).trim()), M+10, biLineY);
-          biLineY += 7;
+          biLineY += 6.5;
         });
       }
 
