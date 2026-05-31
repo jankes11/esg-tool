@@ -1641,6 +1641,7 @@ function generatePDF() {
         doc.text('100%', M+115, sbt_y+3.5);
         doc.setFont(undefined,'bold'); doc.setTextColor(gcArr[0],gcArr[1],gcArr[2]);
         doc.text(totalContrib.toFixed(1)+' pts', M+142, sbt_y+3.5);
+        sbt_y += 12; // mark end of table
       }
 
       var lowestCat = catScoresArr.reduce(function(a,b){
@@ -1682,7 +1683,7 @@ function generatePDF() {
       var bmark = null;
       Object.keys(benchmarks).forEach(function(k){ if(indKey.indexOf(k)>-1) bmark=benchmarks[k]; });
 
-      var bmy = sb_y + sb_h + 4;
+      var bmy = (typeof sbt_y !== 'undefined' && sbt_y > sb_y + sb_h) ? sbt_y + 4 : sb_y + sb_h + 4;
       if (bmark && bmy < H-55) {
         doc.setFillColor(240,248,255);
         doc.setDrawColor(180,210,240); doc.setLineWidth(0.4);
@@ -1712,7 +1713,7 @@ function generatePDF() {
       }
 
       // ESG Maturity Path box
-      var mpY = bmark ? bmy : sb_y + sb_h + 4;
+      var mpY = bmark ? bmy : (typeof sbt_y !== 'undefined' && sbt_y > sb_y + sb_h) ? sbt_y + 4 : sb_y + sb_h + 4;
       if (mpY < H - 55) {
         doc.setFillColor(247,246,243);
         doc.setDrawColor(225,224,220); doc.setLineWidth(0.4);
@@ -1970,7 +1971,7 @@ function generatePDF() {
       // Column headers
       // Action plan: 3-column layout, no timeline overlap
       // Col widths: Priority=26, Area=42, Action=W-2*M-26-42-8=approx 96mm
-      var aColP=M, aColA=M+26, aColQ=M+64, aColQW=W-M-64-2;
+      var aColP=M, aColA=M+26, aColQ=M+64, aColQW=W-2*M-64-28;
 
       var aColI = W-M-20; // impact column
       doc.setFillColor(245,244,240);
@@ -2173,7 +2174,7 @@ function generatePDF() {
         // Business risk
         var bRisk = getBusinessRisk(a.q);
         if (bRisk) {
-          var riskLines = doc.splitTextToSize('Risk: '+safe(bRisk), aColQW);
+          var riskLines = doc.splitTextToSize('Risk: '+safe(bRisk), W-2*M-64-28);
           doc.setFontSize(7); doc.setFont(undefined,'italic'); doc.setTextColor(163,45,45);
           _ay += 1;
           riskLines.slice(0,2).forEach(function(rl){
@@ -2184,7 +2185,8 @@ function generatePDF() {
         if (a.impact) {
           doc.setFontSize(7.5); doc.setFont(undefined,'bold');
           doc.setTextColor(a.col[0],a.col[1],a.col[2]);
-          doc.text(safe(a.impact), W-M-2, y4+4, {align:'right'});
+          doc.setFont(undefined,'bold'); doc.setTextColor(a.col[0],a.col[1],a.col[2]); doc.setFontSize(7.5);
+          doc.text(safe(a.impact), W-M-2, y4+6, {align:'right'});
         }
         // Divider
         doc.setDrawColor(232,230,225); doc.setLineWidth(0.25);
