@@ -59,8 +59,8 @@ export default async function handler(req) {
       );
     }
 
-    // Must be correct amount (£19 = 1900 pence)
-    if (session.amount_total < 1900) {
+    // Must be correct amount (£49 = 4900 pence)
+    if (session.amount_total < 4900) {
       return new Response(
         JSON.stringify({ error: 'wrong_amount', valid: false }),
         { status: 402, headers: { 'Content-Type': 'application/json', ...cors } }
