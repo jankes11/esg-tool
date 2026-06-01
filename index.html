@@ -2495,7 +2495,61 @@ async function generatePDF() {
       });
 
       var finalAiPage = doc.internal.getNumberOfPages();
-      if (finalAiPage !== _aiLastFooteredPage) footer(finalAiPage);
+      if (finalAiPage !== _aiLastFooteredPage) {
+        // Still on the AI page - add filler content to fill remaining space
+
+        y5 += 8;
+
+        // ── "Must have / Should have / Advanced" clarity box ───
+        if (y5 < H - 80) {
+          doc.setFillColor(247,246,243); doc.setDrawColor(220,218,213); doc.setLineWidth(0.3);
+          var matH = 68;
+          doc.roundedRect(M, y5, W-2*M, matH, 3, 3, 'FD');
+          doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+          doc.text('What is expected at your stage', M+5, y5+8);
+          doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+          doc.text('Based on a score of '+overall+'% ('+gradeLabel(overall)+'), here is what customers and banks typically expect vs. what is aspirational:', M+5, y5+14);
+
+          var matRows = [
+            ['Must have now',    [163,45,45],  [252,235,235], 'Written H&S policy, anti-bribery controls, GDPR compliance, basic supplier checks. These are minimum requirements for most tender questionnaires and customer onboarding.'],
+            ['Should have',      [186,117,23], [250,238,220], 'Energy/carbon baseline, workforce data (headcount, turnover), supplier code of conduct, named ESG owner. Expected by Tier 1 contractors and public sector buyers within 12 months.'],
+            ['Advanced (future)',  [15,110,86],  [225,245,238], 'Scope 3 mapping, lifecycle assessments, biodiversity reviews, third-party audits. Relevant when targeting large public contracts or responding to enterprise procurement questionnaires.'],
+          ];
+          var mry = y5 + 20;
+          matRows.forEach(function(mr) {
+            doc.setFillColor(mr[2][0],mr[2][1],mr[2][2]);
+            doc.roundedRect(M+4, mry, W-2*M-8, 13, 2, 2, 'F');
+            doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(mr[1][0],mr[1][1],mr[1][2]);
+            doc.text(mr[0], M+8, mry+5.5);
+            doc.setFont(undefined,'normal'); doc.setTextColor(50,48,44); doc.setFontSize(6.8);
+            var mrLines = doc.splitTextToSize(mr[3], W-2*M-50);
+            doc.text(mrLines[0]||'', M+52, mry+5.5);
+            if (mrLines[1]) doc.text(mrLines[1], M+52, mry+10);
+            mry += 15;
+          });
+          y5 += matH + 6;
+        }
+
+        // ── Honest disclaimer box ─────────────────────────────
+        if (y5 < H - 30) {
+          doc.setFillColor(255,252,235); doc.setDrawColor(220,190,60); doc.setLineWidth(0.3);
+          var dclH = Math.min(28, H-y5-20);
+          doc.roundedRect(M, y5, W-2*M, dclH, 3, 3, 'FD');
+          doc.setFontSize(7.5); doc.setFont(undefined,'bold'); doc.setTextColor(120,90,0);
+          doc.text('About this assessment', M+5, y5+7);
+          doc.setFont(undefined,'normal'); doc.setTextColor(80,60,0); doc.setFontSize(7);
+          var dclText = 'This report reflects your self-declared answers to 43 questions. It is not an audit, verification, or third-party assessment. Your score of '+overall+'% represents your organisation\'s current ESG management practices as you have described them — not an independently verified ESG rating. Use it as a structured starting point and internal roadmap, not as a compliance certificate.';
+          var dclLines = doc.splitTextToSize(dclText, W-2*M-10);
+          var dy2 = y5+13;
+          dclLines.slice(0,3).forEach(function(dl){ if(dy2 < y5+dclH-3){ doc.text(dl,M+5,dy2); dy2+=5; } });
+          y5 += dclH;
+        }
+
+        footer(finalAiPage);
+        _aiLastFooteredPage = finalAiPage;
+      } else {
+        // Already footered (continuation page) - just ensure footer is called
+      }
 
 
 
