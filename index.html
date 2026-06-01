@@ -85,11 +85,25 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
 .hero p{color:var(--muted);font-size:1rem;max-width:46ch;margin-inline:auto;margin-bottom:0}
 .cat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.625rem;max-width:720px;margin:0 auto 2.25rem}
 .cat-pill{padding:.75rem .625rem;border-radius:var(--r-xl);border:1px solid var(--bdr);background:var(--surf);text-align:center;font-size:.8125rem}
-.cat-pill .icon{font-size:1.375rem;margin-bottom:.25rem}
+.cat-pill .icon{width:1.5rem;height:1.5rem;margin-bottom:.25rem;color:var(--p)}.cat-pill .icon svg{width:100%;height:100%}
 .cat-pill .name{font-weight:600;font-size:.875rem;display:block;margin-bottom:.125rem}
 .cat-pill .qs{font-size:.75rem;color:var(--muted)}
 .hero-note{font-size:.8125rem;color:var(--muted);margin-top:.625rem}
-.hero-bottom{padding-top:1.25rem;padding-bottom:2rem}
+.hero-bottom{padding-top:1.25rem;padding-bottom:1.5rem}
+.social-proof-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.375rem .75rem;padding:.625rem 1rem;background:var(--surf2);border-bottom:1px solid var(--border);font-size:.75rem;color:var(--muted)}
+.sp-item strong{color:var(--tx);font-weight:600}
+.sp-dot{color:var(--border);font-size:.9rem}
+.faq-section{background:var(--bg);border-top:1px solid var(--border);padding:2.5rem 1rem 3rem}
+.faq-title{font-size:1.25rem;font-weight:700;margin-bottom:1.25rem;color:var(--tx)}
+.faq-list{max-width:42rem}
+.faq-item{border-bottom:1px solid var(--border);padding:.125rem 0}
+.faq-item summary{cursor:pointer;padding:.75rem 0;font-size:.9rem;font-weight:600;color:var(--tx);list-style:none;display:flex;justify-content:space-between;align-items:center;gap:1rem;user-select:none}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::after{content:'+';font-size:1.1rem;color:var(--muted);flex-shrink:0;font-weight:400;transition:transform .2s}
+.faq-item[open] summary::after{content:'−'}
+.faq-item p{font-size:.85rem;color:var(--muted);padding:.125rem 0 .875rem;line-height:1.65;max-width:56ch}
+.faq-show-more{margin-top:1rem;background:none;border:1px solid var(--border);border-radius:.5rem;padding:.5rem 1rem;font-size:.8rem;color:var(--muted);cursor:pointer;transition:all .15s}
+.faq-show-more:hover{border-color:var(--p);color:var(--p)}
 .hero-lead{font-size:.95rem;color:var(--muted);margin:.5rem 0 1.25rem;max-width:52ch;margin-inline:auto}
 .hero-pillars-wrap{background:var(--surf);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1rem 1.5rem;margin-top:1.5rem}
 .hero-pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:0;max-width:52rem;margin-inline:auto}
@@ -315,19 +329,47 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
     </div>
   </div>
 
+  <!-- Social proof bar -->
+  <div class="social-proof-bar">
+    <span class="sp-item"><strong>Construction</strong></span>
+    <span class="sp-dot">·</span>
+    <span class="sp-item"><strong>Manufacturing</strong></span>
+    <span class="sp-dot">·</span>
+    <span class="sp-item"><strong>Food &amp; Beverage</strong></span>
+    <span class="sp-dot">·</span>
+    <span class="sp-item"><strong>Logistics</strong></span>
+    <span class="sp-dot">·</span>
+    <span class="sp-item"><strong>Professional Services</strong></span>
+  </div>
+
   <!-- Zone 3: Categories + CTA -->
   <div class="container">
     <div class="hero hero-bottom">
       <div class="cat-grid">
-        <div class="cat-pill"><div class="icon">🌡️</div><span class="name">Climate</span><span class="qs">8 questions</span></div>
-        <div class="cat-pill"><div class="icon">🌿</div><span class="name">Environment</span><span class="qs">8 questions</span></div>
-        <div class="cat-pill"><div class="icon">🤝</div><span class="name">Your People</span><span class="qs">10 questions</span></div>
-        <div class="cat-pill"><div class="icon">🔗</div><span class="name">Supply Chain</span><span class="qs">7 questions</span></div>
-        <div class="cat-pill"><div class="icon">💼</div><span class="name">Governance</span><span class="qs">10 questions</span></div>
+        <div class="cat-pill">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0"/></svg></div>
+          <span class="name">Climate</span><span class="qs">8 questions</span>
+        </div>
+        <div class="cat-pill">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></div>
+          <span class="name">Environment</span><span class="qs">8 questions</span>
+        </div>
+        <div class="cat-pill">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <span class="name">Your People</span><span class="qs">10 questions</span>
+        </div>
+        <div class="cat-pill">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+          <span class="name">Supply Chain</span><span class="qs">7 questions</span>
+        </div>
+        <div class="cat-pill">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <span class="name">Governance</span><span class="qs">10 questions</span>
+        </div>
       </div>
 
       <div class="hero-cta-block">
-        <button class="btn-primary btn-large" onclick="showScreen('company')">Start free assessment →</button>
+        <button class="btn-primary btn-large" onclick="showScreen('company')">See your ESG score →</button>
         <div class="hero-price-note">
           Full PDF report — <strong>£49 one-off payment</strong> · Instant download · Less than one hour of consultant time · No subscription
         </div>
@@ -342,6 +384,73 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
     </div>
   </div>
 
+</div>
+
+<!-- ══ FAQ (shown on welcome screen below fold) ══ -->
+<div class="faq-section" id="faq-section" style="display:none">
+  <div class="container">
+    <h2 class="faq-title">Frequently asked questions</h2>
+    <div class="faq-list" id="faq-list">
+
+      <details class="faq-item" open>
+        <summary>How long does the assessment take?</summary>
+        <p>Around 20 minutes. All 43 questions are written in plain English — no ESG jargon, no technical knowledge required. You answer based on what your business actually does today.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>What do I get for £49?</summary>
+        <p>A full 10-page PDF report covering your ESG score across 5 areas, a procurement readiness breakdown, a sector benchmark, a prioritised action plan ranked by effort and impact, and AI-powered recommendations specific to your industry. You can share it with customers, banks, or procurement teams.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Is this suitable for my industry?</summary>
+        <p>Yes, if you're a UK SME in a supply chain. The assessment is most relevant for businesses in construction, manufacturing, food &amp; beverage, logistics, facilities management, and professional services — particularly those who supply to larger businesses or public sector buyers.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>What if I score badly?</summary>
+        <p>Most SMEs score in the 40–60% range when they first assess. A low score isn't a failure — it's a starting point. Your report will show you exactly which gaps matter most and which actions have the biggest impact for the least effort.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>My customer has started asking about ESG — will this help?</summary>
+        <p>Yes. The Procurement Readiness section of your report maps directly to the requirements most commonly asked in supplier questionnaires, onboarding forms, and tender applications — including H&amp;S policy, GDPR, Modern Slavery, carbon baseline, and supplier due diligence.</p>
+      </details>
+
+      <div class="faq-more" id="faq-more" style="display:none">
+        <details class="faq-item">
+          <summary>The assessment says "free" — why does the report cost £49?</summary>
+          <p>The assessment is free to complete. The £49 covers your full PDF report, which is generated once you finish. You only pay if you want the detailed results, benchmark, and action plan.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Do I need to create an account or log in?</summary>
+          <p>No. There's no login, no account, and no subscription. You complete the assessment in your browser and receive your PDF report instantly after payment.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Is my data stored or shared?</summary>
+          <p>Your answers stay in your browser session. We do not store your individual responses or share them with third parties.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Is this an official ESG certification or audit?</summary>
+          <p>No. This is a structured self-assessment tool. Your score is based on your own answers and is not independently verified. It gives you a clear starting point and a practical roadmap — not a compliance certificate.</p>
+        </details>
+        <details class="faq-item">
+          <summary>What does the score actually mean?</summary>
+          <p>Your score reflects how many ESG management practices you have in place today, scored against a weighted framework aligned with ESRS Set 1 and the EFRAG VSME Standard (December 2024). A higher score means you're better placed to respond to customer ESG requests, supply chain audits, and procurement questionnaires.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Can I retake the assessment?</summary>
+          <p>Yes. Many businesses retake after 6–12 months to track progress and show customers evidence of improvement. Each retake generates a new report reflecting your updated answers.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Do I legally have to report on ESG?</summary>
+          <p>It depends on your size. Most UK SMEs are not yet legally required to report — but they are increasingly required to answer ESG questions by their customers, banks, and insurers. This tool helps you prepare for those conversations.</p>
+        </details>
+      </div>
+
+      <button class="faq-show-more" id="faq-toggle" onclick="toggleFaq()">Show all questions ↓</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══ COMPANY ══ -->
@@ -518,7 +627,19 @@ const TOTAL_Q = CATEGORIES.reduce((a, c) => a + c.questions.length, 0);
 let answers = {}, notes = {}, currentCat = 0;
 
 /* ── Screens ───────────────────────────────────────────── */
+function toggleFaq() {
+  var more = document.getElementById('faq-more');
+  var btn  = document.getElementById('faq-toggle');
+  if (!more || !btn) return;
+  var open = more.style.display !== 'none';
+  more.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? 'Show all questions ↓' : 'Show fewer questions ↑';
+}
+
 function showScreen(id) {
+  // Hide FAQ unless welcome
+  var faqEl2 = document.getElementById('faq-section');
+  if (faqEl2) faqEl2.style.display = (id === 'welcome') ? 'block' : 'none';
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
