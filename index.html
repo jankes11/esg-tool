@@ -93,8 +93,29 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
 .social-proof-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.375rem .75rem;padding:.625rem 1rem;background:var(--surf2);border-bottom:1px solid var(--border);font-size:.75rem;color:var(--muted)}
 .sp-item strong{color:var(--tx);font-weight:600}
 .sp-dot{color:var(--border);font-size:.9rem}
-.faq-section{background:var(--bg);border-top:1px solid var(--border);padding:2.5rem 1rem 3rem}
 .faq-title{font-size:1.25rem;font-weight:700;margin-bottom:1.25rem;color:var(--tx)}
+.faq-link-btn{background:none;border:none;color:var(--p);font-size:.8rem;cursor:pointer;padding:.25rem 0;margin-top:.375rem;text-decoration:underline;text-underline-offset:3px;opacity:.8}
+.faq-link-btn:hover{opacity:1}
+.faq-page{max-width:56rem;margin:0 auto;padding:2rem 1.25rem 3rem}
+.faq-page-header{display:flex;align-items:flex-start;gap:1.25rem;margin-bottom:2rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.back-btn{font-size:.85rem;padding:.5rem .875rem;margin-top:.25rem;white-space:nowrap}
+.faq-page-tag{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--p);font-weight:700;margin-bottom:.375rem}
+.faq-page-title{font-size:1.75rem;font-weight:800;color:var(--tx);line-height:1.1;margin:0}
+.faq-cols{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem 2.5rem;align-items:start}
+@media(max-width:680px){.faq-cols{grid-template-columns:1fr}}
+.faq-col{display:flex;flex-direction:column;gap:1.75rem}
+.faq-group{display:flex;flex-direction:column}
+.faq-group-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--p);font-weight:700;padding:.5rem 0;border-bottom:2px solid var(--p);margin-bottom:.25rem}
+.faq-item{border-bottom:1px solid var(--border)}
+.faq-item summary{cursor:pointer;padding:.7rem 0;font-size:.875rem;font-weight:600;color:var(--tx);list-style:none;display:flex;justify-content:space-between;align-items:center;gap:.75rem;user-select:none;line-height:1.35}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::after{content:'+';font-size:1rem;color:var(--muted);flex-shrink:0;font-weight:300;line-height:1}
+.faq-item[open] summary::after{content:'−'}
+.faq-item p{font-size:.825rem;color:var(--muted);padding:.125rem 0 .875rem;line-height:1.65;max-width:36ch}
+.faq-cta-box{background:var(--surf);border:1px solid var(--border);border-radius:.75rem;padding:1.25rem;display:flex;flex-direction:column;gap:.625rem;margin-top:.5rem}
+.faq-cta-box p{font-size:.9rem;font-weight:600;color:var(--tx);margin:0}
+.faq-cta-box .btn-primary{align-self:flex-start}
+.faq-cta-note{font-size:.75rem;color:var(--muted)}
 .faq-list{max-width:42rem}
 .faq-item{border-bottom:1px solid var(--border);padding:.125rem 0}
 .faq-item summary{cursor:pointer;padding:.75rem 0;font-size:.9rem;font-weight:600;color:var(--tx);list-style:none;display:flex;justify-content:space-between;align-items:center;gap:1rem;user-select:none}
@@ -381,77 +402,12 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
       </div>
 
       <p class="hero-note">No login · No jargon · Aligned with ESRS/VSME 2024 · Designed for UK SMEs in supply chains</p>
+      <button class="faq-link-btn" onclick="showScreen('faq')">Have questions? Read our FAQ →</button>
     </div>
   </div>
 
 </div>
 
-<!-- ══ FAQ (shown on welcome screen below fold) ══ -->
-<div class="faq-section" id="faq-section" style="display:none">
-  <div class="container">
-    <h2 class="faq-title">Frequently asked questions</h2>
-    <div class="faq-list" id="faq-list">
-
-      <details class="faq-item" open>
-        <summary>How long does the assessment take?</summary>
-        <p>Around 20 minutes. All 43 questions are written in plain English — no ESG jargon, no technical knowledge required. You answer based on what your business actually does today.</p>
-      </details>
-
-      <details class="faq-item">
-        <summary>What do I get for £49?</summary>
-        <p>A full 10-page PDF report covering your ESG score across 5 areas, a procurement readiness breakdown, a sector benchmark, a prioritised action plan ranked by effort and impact, and AI-powered recommendations specific to your industry. You can share it with customers, banks, or procurement teams.</p>
-      </details>
-
-      <details class="faq-item">
-        <summary>Is this suitable for my industry?</summary>
-        <p>Yes, if you're a UK SME in a supply chain. The assessment is most relevant for businesses in construction, manufacturing, food &amp; beverage, logistics, facilities management, and professional services — particularly those who supply to larger businesses or public sector buyers.</p>
-      </details>
-
-      <details class="faq-item">
-        <summary>What if I score badly?</summary>
-        <p>Most SMEs score in the 40–60% range when they first assess. A low score isn't a failure — it's a starting point. Your report will show you exactly which gaps matter most and which actions have the biggest impact for the least effort.</p>
-      </details>
-
-      <details class="faq-item">
-        <summary>My customer has started asking about ESG — will this help?</summary>
-        <p>Yes. The Procurement Readiness section of your report maps directly to the requirements most commonly asked in supplier questionnaires, onboarding forms, and tender applications — including H&amp;S policy, GDPR, Modern Slavery, carbon baseline, and supplier due diligence.</p>
-      </details>
-
-      <div class="faq-more" id="faq-more" style="display:none">
-        <details class="faq-item">
-          <summary>The assessment says "free" — why does the report cost £49?</summary>
-          <p>The assessment is free to complete. The £49 covers your full PDF report, which is generated once you finish. You only pay if you want the detailed results, benchmark, and action plan.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Do I need to create an account or log in?</summary>
-          <p>No. There's no login, no account, and no subscription. You complete the assessment in your browser and receive your PDF report instantly after payment.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Is my data stored or shared?</summary>
-          <p>Your answers stay in your browser session. We do not store your individual responses or share them with third parties.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Is this an official ESG certification or audit?</summary>
-          <p>No. This is a structured self-assessment tool. Your score is based on your own answers and is not independently verified. It gives you a clear starting point and a practical roadmap — not a compliance certificate.</p>
-        </details>
-        <details class="faq-item">
-          <summary>What does the score actually mean?</summary>
-          <p>Your score reflects how many ESG management practices you have in place today, scored against a weighted framework aligned with ESRS Set 1 and the EFRAG VSME Standard (December 2024). A higher score means you're better placed to respond to customer ESG requests, supply chain audits, and procurement questionnaires.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Can I retake the assessment?</summary>
-          <p>Yes. Many businesses retake after 6–12 months to track progress and show customers evidence of improvement. Each retake generates a new report reflecting your updated answers.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Do I legally have to report on ESG?</summary>
-          <p>It depends on your size. Most UK SMEs are not yet legally required to report — but they are increasingly required to answer ESG questions by their customers, banks, and insurers. This tool helps you prepare for those conversations.</p>
-        </details>
-      </div>
-
-      <button class="faq-show-more" id="faq-toggle" onclick="toggleFaq()">Show all questions ↓</button>
-    </div>
-  </div>
-</div>
 
 <!-- ══ COMPANY ══ -->
 <div class="screen" id="screen-company">
@@ -627,19 +583,7 @@ const TOTAL_Q = CATEGORIES.reduce((a, c) => a + c.questions.length, 0);
 let answers = {}, notes = {}, currentCat = 0;
 
 /* ── Screens ───────────────────────────────────────────── */
-function toggleFaq() {
-  var more = document.getElementById('faq-more');
-  var btn  = document.getElementById('faq-toggle');
-  if (!more || !btn) return;
-  var open = more.style.display !== 'none';
-  more.style.display = open ? 'none' : 'block';
-  btn.textContent = open ? 'Show all questions ↓' : 'Show fewer questions ↑';
-}
-
 function showScreen(id) {
-  // Hide FAQ unless welcome
-  var faqEl2 = document.getElementById('faq-section');
-  if (faqEl2) faqEl2.style.display = (id === 'welcome') ? 'block' : 'none';
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2973,3 +2917,97 @@ async function generatePDF() {
 
 
 </script>
+
+<!-- ══ FAQ ══ -->
+<div class="screen" id="screen-faq">
+  <div class="faq-page">
+    <div class="faq-page-header">
+      <button class="btn-ghost back-btn" onclick="showScreen('welcome')">← Back</button>
+      <div>
+        <div class="faq-page-tag">Help &amp; FAQ</div>
+        <h1 class="faq-page-title">Common questions</h1>
+      </div>
+    </div>
+
+    <div class="faq-cols">
+
+      <!-- Column 1 -->
+      <div class="faq-col">
+        <div class="faq-group">
+          <div class="faq-group-label">About the assessment</div>
+          <details class="faq-item" open>
+            <summary>How long does it take?</summary>
+            <p>Around 20 minutes. All 43 questions are in plain English — no ESG jargon, no technical knowledge required. You answer based on what your business actually does today.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Do I need to log in or create an account?</summary>
+            <p>No. There's no login, no account, and no subscription. You complete the assessment in your browser and receive your PDF report instantly after payment.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Is my data stored or shared?</summary>
+            <p>Your answers stay in your browser session. We do not store your individual responses or share them with third parties.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Is this suitable for my industry?</summary>
+            <p>Yes, if you're a UK SME in a supply chain. Most relevant for construction, manufacturing, food &amp; beverage, logistics, facilities management, and professional services — particularly businesses that supply to larger companies or public sector buyers.</p>
+          </details>
+        </div>
+        <div class="faq-group">
+          <div class="faq-group-label">About ESG requirements</div>
+          <details class="faq-item">
+            <summary>My customer has started asking about ESG — will this help?</summary>
+            <p>Yes. The Procurement Readiness section maps directly to requirements commonly asked in supplier questionnaires and tender applications — including H&amp;S policy, GDPR, Modern Slavery, carbon baseline, and supplier due diligence.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Do I legally have to report on ESG?</summary>
+            <p>Most UK SMEs are not yet legally required to report — but they are increasingly required to answer ESG questions by customers, banks, and insurers. This tool helps you prepare for those conversations.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What if I score badly?</summary>
+            <p>Most SMEs score 40–60% on their first assessment. A low score isn't a failure — it's a starting point. Your report shows which gaps matter most and which actions have the biggest impact for the least effort.</p>
+          </details>
+        </div>
+      </div>
+
+      <!-- Column 2 -->
+      <div class="faq-col">
+        <div class="faq-group">
+          <div class="faq-group-label">About the report</div>
+          <details class="faq-item">
+            <summary>What do I get for £49?</summary>
+            <p>A full 10-page PDF covering your ESG score across 5 areas, procurement readiness breakdown, sector benchmark, prioritised action plan, and AI-powered recommendations specific to your industry. You can share it with customers, banks, or procurement teams.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What does the score actually mean?</summary>
+            <p>Your score reflects how many ESG management practices you have in place today, scored against a weighted framework aligned with ESRS Set 1 and EFRAG VSME 2024. A higher score means you're better placed for customer ESG requests, supply chain audits, and procurement questionnaires.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Is this an official ESG certification or audit?</summary>
+            <p>No. This is a structured self-assessment tool. Your score is based on your own answers and is not independently verified. It gives you a clear starting point and a practical roadmap — not a compliance certificate.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Can I retake the assessment?</summary>
+            <p>Yes. Many businesses retake after 6–12 months to track progress and show customers evidence of improvement. Each retake generates a new report reflecting your updated answers.</p>
+          </details>
+        </div>
+        <div class="faq-group">
+          <div class="faq-group-label">About cost &amp; process</div>
+          <details class="faq-item">
+            <summary>The assessment is free — why does the report cost £49?</summary>
+            <p>The assessment is free to complete. The £49 covers your full PDF report. You only pay if you want the detailed results, benchmark, and action plan.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Is there a subscription or recurring charge?</summary>
+            <p>No. One-off payment of £49. No subscription, no renewal, no hidden fees.</p>
+          </details>
+        </div>
+        <div class="faq-cta-box">
+          <p>Ready to find out where you stand?</p>
+          <button class="btn-primary" onclick="showScreen('company')">Start assessment →</button>
+          <span class="faq-cta-note">20 minutes &nbsp;·&nbsp; £49 PDF report &nbsp;·&nbsp; No login required</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
