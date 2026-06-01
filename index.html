@@ -2376,9 +2376,16 @@ async function generatePDF() {
       var aiLines = aiText.split('\n');
       doc.setFontSize(8.5); doc.setTextColor(26,25,22);
       aiLines.forEach(function(line) {
-        if (y5 > H-20) return;
         var trimmed = line.trim();
         if (!trimmed) { y5 += 3; return; }
+
+        // ── Auto page break when near bottom ─────────────────
+        if (y5 > H-28) {
+          footer(doc.internal.getNumberOfPages());
+          doc.addPage();
+          y5 = sectionHeader('AI-powered recommendations (continued)', 6, '');
+        }
+
         // Section headers (## or bold standalone lines)
         if (/^##\s/.test(trimmed) || /^\*\*[^*]+\*\*$/.test(trimmed)) {
           var hText = trimmed.replace(/^##\s+/,'').replace(/\*\*/g,'');
@@ -2425,7 +2432,10 @@ async function generatePDF() {
       });
 
       // Effort vs Impact prioritisation table
-      if (y5 < H - 65) {
+      if (y5 > H - 80) {
+        footer(doc.internal.getNumberOfPages()); doc.addPage(); y5 = 22;
+      }
+      if (y5 < H - 40) {
         y5 += 5;
         doc.setDrawColor(225,223,218); doc.setLineWidth(0.3);
         doc.line(M, y5, W-M, y5);
