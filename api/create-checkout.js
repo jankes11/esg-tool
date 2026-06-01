@@ -21,9 +21,9 @@ export default async function handler(req) {
     const params = new URLSearchParams({
       'mode': 'payment',
       'line_items[0][price_data][currency]': 'gbp',
-      'line_items[0][price_data][product_data][name]': 'ESG Assessment Report PDF',
+      'line_items[0][price_data][product_data][name]': 'myESGcheck — Full ESG Assessment Report',
       'line_items[0][price_data][product_data][description]': '8-page branded ESG report with AI recommendations, ESRS/VSME alignment, and action plan',
-      'line_items[0][price_data][unit_amount]': '1900',
+      'line_items[0][price_data][unit_amount]': '4900',
       'line_items[0][quantity]': '1',
       'success_url': 'https://myesgcheck.com/?session_id={CHECKOUT_SESSION_ID}',
       'cancel_url': 'https://myesgcheck.com/',
