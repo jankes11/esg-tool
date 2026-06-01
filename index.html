@@ -2408,7 +2408,10 @@ async function generatePDF() {
               var restLines = doc.splitTextToSize(restText, W-2*M-6-(xOff-M-3));
               doc.text(restLines[0]||'', xOff, y5);
               y5 += 5.5;
-              restLines.slice(1).forEach(function(rl){ doc.text(rl, M+6, y5); y5+=5.5; });
+              restLines.slice(1).forEach(function(rl){
+                if (y5 > H-22) { footer(doc.internal.getNumberOfPages()); doc.addPage(); y5 = 22; }
+                doc.text(rl, M+6, y5); y5+=5.5;
+              });
             } else { y5 += 5.5; }
           }
         }
@@ -2418,23 +2421,34 @@ async function generatePDF() {
           var bulletPlain = bulletText.replace(/\*\*([^*]+)\*\*/g,'$1');
           var bulletLines = doc.splitTextToSize(safe(bulletPlain), W-2*M-10);
           doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-          doc.text('\u2022 '+bulletLines[0], M+3, y5);
-          y5 += 5.5;
-          bulletLines.slice(1).forEach(function(bl){ doc.text('  '+bl, M+6, y5); y5+=5.5; });
+          bulletLines.forEach(function(bl){
+            if (y5 > H-22) { footer(doc.internal.getNumberOfPages()); doc.addPage(); y5 = 22; }
+            doc.text((bl === bulletLines[0] ? '\u2022 ' : '  ') + bl, M+3, y5); y5+=5.5;
+          });
         }
         // Regular line - strip remaining ** markers
         else {
           var plainText = trimmed.replace(/\*\*([^*]+)\*\*/g,'$1');
           var wrappedLines = doc.splitTextToSize(safe(plainText), W-2*M-6);
           doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-          wrappedLines.forEach(function(wl){ doc.text(wl, M+3, y5); y5+=5.5; });
+          wrappedLines.forEach(function(wl){
+            if (y5 > H-22) {
+              footer(doc.internal.getNumberOfPages());
+              doc.addPage(); y5 = 22;
+            }
+            doc.text(wl, M+3, y5); y5+=5.5;
+          });
         }
       });
 
-      // Effort vs Impact prioritisation table
+      // Effort vs Impact prioritisation table — always needs ~75mm
+      // If less than 80mm remaining, move to new page
       if (y5 > H - 80) {
         footer(doc.internal.getNumberOfPages()); doc.addPage(); y5 = 22;
       }
+      // Add separator line
+      doc.setDrawColor(225,223,218); doc.setLineWidth(0.3);
+      doc.line(M, y5, W-M, y5); y5 += 5;
       if (y5 < H - 40) {
         y5 += 5;
         doc.setDrawColor(225,223,218); doc.setLineWidth(0.3);
