@@ -2353,14 +2353,13 @@ async function generatePDF() {
       var aiEl = document.getElementById('ai-content');
       var aiText = '';
       if (aiEl && aiEl.innerText && !aiEl.classList.contains('ai-loading')) {
-        // Strip any HTML tags
         aiText = aiEl.innerText.replace(/<[^>]+>/g,'').trim();
       }
       if (!aiText || aiText.length < 20) {
-        // No AI text - show a clean message pointing to action plan
         aiText = '## Your personalised recommendations\n\nYour prioritised action plan (Section 4) contains your specific recommendations based on your assessment answers.\n\n## Key priorities identified\n\nBased on your scores, focus first on your lowest-scoring category and the High priority actions in your plan.\n\n## What mature ESG programmes typically include\n\nRegular measurement of key metrics, documented policies reviewed annually, and supplier engagement on ESG standards.';
       }
 
+      // AI badge header
       doc.setFillColor(240,250,246);
       doc.setDrawColor(180,225,205); doc.setLineWidth(0.5);
       doc.roundedRect(M, y5, W-2*M, 10, 3, 3, 'FD');
@@ -2372,124 +2371,133 @@ async function generatePDF() {
       doc.text('Personalised for '+safe(co)+' ('+safe(industry)+')', M+27, y5+6.5);
       y5 += 14;
 
-      // Render AI text with basic markdown formatting
+      // ── Helper: add page break if needed ─────────────────────
+      var _aiLastFooteredPage = -1;
+      function aiPageBreak() {
+        var curPage = doc.internal.getNumberOfPages();
+        if (curPage !== _aiLastFooteredPage) {
+          footer(curPage);
+          _aiLastFooteredPage = curPage;
+        }
+        doc.addPage();
+        y5 = 18;
+        doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+      }
+
+      // ── Render AI text with markdown ──────────────────────────
       var aiLines = aiText.split('\n');
       doc.setFontSize(8.5); doc.setTextColor(26,25,22);
       aiLines.forEach(function(line) {
         var trimmed = line.trim();
         if (!trimmed) { y5 += 3; return; }
 
-        // ── Auto page break when near bottom ─────────────────
-        if (y5 > H-28) {
-          footer(doc.internal.getNumberOfPages());
-          doc.addPage();
-          y5 = 22; // just continue from top margin, no new section header
-        }
-
-        // Section headers (## or bold standalone lines)
-        if (/^##\s/.test(trimmed) || /^\*\*[^*]+\*\*$/.test(trimmed)) {
+        // Section headers (##)
+        if (/^##\s/.test(trimmed)) {
+          if (y5 > H-22) aiPageBreak();
           var hText = trimmed.replace(/^##\s+/,'').replace(/\*\*/g,'');
           doc.setFont(undefined,'bold'); doc.setFontSize(9); doc.setTextColor(8,80,65);
           doc.text(safe(hText), M+3, y5);
-          y5 += 6.5;
+          y5 += 7;
           doc.setFont(undefined,'normal'); doc.setFontSize(8.5); doc.setTextColor(26,25,22);
         }
-        // Numbered items with bold lead word
+        // Numbered items
         else if (/^\d+\.\s/.test(trimmed)) {
           var numMatch = trimmed.match(/^(\d+\.\s+)(\*\*([^*]+)\*\*\.?\s*)?(.*)/);
           if (numMatch) {
-            doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
             var numPart = safe(numMatch[1] + (numMatch[3]||''));
+            var restText = safe(numMatch[4]||'');
+            var allRestLines = restText ? doc.splitTextToSize(restText, W-2*M-20) : [];
+            // Check if whole item fits, if not break first
+            var neededH = 5.5 + allRestLines.length * 5.5;
+            if (y5 + neededH > H-18 && y5 > 50) aiPageBreak();
+            doc.setFont(undefined,'bold'); doc.setTextColor(15,110,86);
             doc.text(numPart, M+3, y5);
             var xOff = M+3+doc.getTextWidth(numPart)+1;
             doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-            var restText = safe(numMatch[4]||'');
-            if (restText) {
-              var restLines = doc.splitTextToSize(restText, W-2*M-6-(xOff-M-3));
-              doc.text(restLines[0]||'', xOff, y5);
+            if (allRestLines.length > 0) {
+              doc.text(allRestLines[0], xOff, y5);
               y5 += 5.5;
-              restLines.slice(1).forEach(function(rl){
-                if (y5 > H-22) { footer(doc.internal.getNumberOfPages()); doc.addPage(); y5 = 22; }
+              allRestLines.slice(1).forEach(function(rl){
+                if (y5 > H-18) aiPageBreak();
                 doc.text(rl, M+6, y5); y5+=5.5;
               });
             } else { y5 += 5.5; }
           }
         }
-        // Bullet points (-, *, •, or ? which appears when • doesn't render)
-        else if (/^[-*•?]\s/.test(trimmed)) {
-          var bulletText = trimmed.replace(/^[-*•?]\s+/,'');
-          var bulletPlain = bulletText.replace(/\*\*([^*]+)\*\*/g,'$1');
-          var bulletLines = doc.splitTextToSize(safe(bulletPlain), W-2*M-10);
-          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-          bulletLines.forEach(function(bl){
-            if (y5 > H-22) { footer(doc.internal.getNumberOfPages()); doc.addPage(); y5 = 22; }
-            doc.text((bl === bulletLines[0] ? '\u2022 ' : '  ') + bl, M+3, y5); y5+=5.5;
+        // Bullet points
+        else if (/^[-*•]\s/.test(trimmed)) {
+          var bText = trimmed.replace(/^[-*•]\s+/,'').replace(/\*\*([^*]+)\*\*/g,'$1');
+          var bLines = doc.splitTextToSize(safe(bText), W-2*M-10);
+          bLines.forEach(function(bl, bi){
+            if (y5 > H-18) aiPageBreak();
+            doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+            doc.text((bi===0?'\u2022 ':' ')+bl, M+3, y5); y5+=5.5;
           });
         }
-        // Regular line - strip remaining ** markers
+        // Regular paragraph
         else {
-          var plainText = trimmed.replace(/\*\*([^*]+)\*\*/g,'$1');
-          var wrappedLines = doc.splitTextToSize(safe(plainText), W-2*M-6);
-          doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
-          wrappedLines.forEach(function(wl){
-            if (y5 > H-22) {
-              footer(doc.internal.getNumberOfPages());
-              doc.addPage(); y5 = 22;
-            }
-            doc.text(wl, M+3, y5); y5+=5.5;
+          var pText = trimmed.replace(/\*\*([^*]+)\*\*/g,'$1');
+          var pLines = doc.splitTextToSize(safe(pText), W-2*M-6);
+          pLines.forEach(function(pl){
+            if (y5 > H-18) aiPageBreak();
+            doc.setFont(undefined,'normal'); doc.setTextColor(26,25,22);
+            doc.text(pl, M+3, y5); y5+=5.5;
           });
         }
       });
 
-      // Effort vs Impact prioritisation table — always needs ~75mm
-      // If less than 80mm remaining, move to new page
-      if (y5 > H - 80) {
-        footer(doc.internal.getNumberOfPages()); doc.addPage(); y5 = 22;
+      // ── Prioritisation guide ──────────────────────────────────
+      // Always needs ~75mm — move to new page if not enough room
+      if (y5 > H - 82) {
+        var curPg = doc.internal.getNumberOfPages();
+        if (curPg !== _aiLastFooteredPage) {
+          footer(curPg);
+          _aiLastFooteredPage = curPg;
+        }
+        doc.addPage();
+        y5 = 18;
       }
-      // Add separator line
+      y5 += 6;
       doc.setDrawColor(225,223,218); doc.setLineWidth(0.3);
-      doc.line(M, y5, W-M, y5); y5 += 5;
-      if (y5 < H - 40) {
-        y5 += 5;
-        doc.setDrawColor(225,223,218); doc.setLineWidth(0.3);
-        doc.line(M, y5, W-M, y5);
-        y5 += 7;
-        doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
-        doc.text('Prioritisation guide \u2014 where to start', M, y5);
-        y5 += 7;
-        var eiRows = [
-          ['Supplier Code of Conduct',    'Low',    'High',   'Start now'],
-          ['Carbon baseline estimate',    'Low',    'High',   'Start now'],
-          ['Workforce data tracking',     'Low',    'Medium', 'Quick win'],
-          ['Scope 3 emissions mapping',   'Medium', 'High',   'Month 2-3'],
-          ['Screen top 5 suppliers',      'Medium', 'High',   'Month 2-3'],
-          ['Biodiversity site check',     'Medium', 'Medium', 'Month 3-6'],
-        ];
-        doc.setFillColor(245,244,240); doc.rect(M, y5, W-2*M, 7, 'F');
-        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
-        doc.text('ACTION', M+3, y5+5); doc.text('EFFORT', M+100, y5+5);
-        doc.text('IMPACT', M+122, y5+5); doc.text('WHEN', M+145, y5+5);
+      doc.line(M, y5, W-M, y5); y5 += 7;
+      doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.setTextColor(26,25,22);
+      doc.text('Prioritisation guide \u2014 where to start', M, y5); y5 += 7;
+      var eiRows = [
+        ['Supplier Code of Conduct', 'Low',    'High',   'Start now'],
+        ['Carbon baseline estimate', 'Low',    'High',   'Start now'],
+        ['Workforce data tracking',  'Low',    'Medium', 'Quick win'],
+        ['Scope 3 emissions mapping','Medium', 'High',   'Month 2-3'],
+        ['Screen top 5 suppliers',   'Medium', 'High',   'Month 2-3'],
+        ['Biodiversity site check',  'Medium', 'Medium', 'Month 3-6'],
+      ];
+      doc.setFillColor(245,244,240); doc.rect(M, y5, W-2*M, 7, 'F');
+      doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(130,128,122);
+      doc.text('ACTION',M+3,y5+5); doc.text('EFFORT',M+100,y5+5);
+      doc.text('IMPACT',M+122,y5+5); doc.text('WHEN',M+145,y5+5);
+      y5 += 9;
+      eiRows.forEach(function(row,ri) {
+        if (y5 > H-18) return;
+        if (ri%2===0){doc.setFillColor(250,250,249);doc.rect(M,y5-2,W-2*M,9,'F');}
+        doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34);
+        doc.text(safe(row[0]),M+3,y5+4);
+        var efCol=row[1]==='Low'?[15,110,86]:[186,117,23], efBg=row[1]==='Low'?[225,245,238]:[250,238,220];
+        doc.setFillColor(efBg[0],efBg[1],efBg[2]); doc.roundedRect(M+98,y5,18,6,1,1,'F');
+        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(efCol[0],efCol[1],efCol[2]);
+        doc.text(row[1],M+107,y5+4.5,{align:'center'});
+        var imCol=row[2]==='High'?[15,110,86]:[130,128,122], imBg=row[2]==='High'?[225,245,238]:[240,238,234];
+        doc.setFillColor(imBg[0],imBg[1],imBg[2]); doc.roundedRect(M+120,y5,18,6,1,1,'F');
+        doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(imCol[0],imCol[1],imCol[2]);
+        doc.text(row[2],M+129,y5+4.5,{align:'center'});
+        doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
+        doc.text(safe(row[3]),M+145,y5+4.5);
+        doc.setDrawColor(232,230,225); doc.setLineWidth(0.2); doc.line(M,y5+7,W-M,y5+7);
         y5 += 9;
-        eiRows.forEach(function(row,ri) {
-          if (y5 > H-18) return;
-          if (ri%2===0){doc.setFillColor(250,250,249);doc.rect(M,y5-2,W-2*M,9,'F');}
-          doc.setFontSize(7.5); doc.setFont(undefined,'normal'); doc.setTextColor(40,38,34);
-          doc.text(safe(row[0]),M+3,y5+4);
-          var efCol=row[1]==='Low'?[15,110,86]:[186,117,23], efBg=row[1]==='Low'?[225,245,238]:[250,238,220];
-          doc.setFillColor(efBg[0],efBg[1],efBg[2]); doc.roundedRect(M+98,y5,18,6,1,1,'F');
-          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(efCol[0],efCol[1],efCol[2]);
-          doc.text(row[1],M+107,y5+4.5,{align:'center'});
-          var imCol=row[2]==='High'?[15,110,86]:[130,128,122], imBg=row[2]==='High'?[225,245,238]:[240,238,234];
-          doc.setFillColor(imBg[0],imBg[1],imBg[2]); doc.roundedRect(M+120,y5,18,6,1,1,'F');
-          doc.setFontSize(6.5); doc.setFont(undefined,'bold'); doc.setTextColor(imCol[0],imCol[1],imCol[2]);
-          doc.text(row[2],M+129,y5+4.5,{align:'center'});
-          doc.setFontSize(7); doc.setFont(undefined,'normal'); doc.setTextColor(92,90,85);
-          doc.text(safe(row[3]),M+145,y5+4.5);
-          doc.setDrawColor(232,230,225); doc.setLineWidth(0.2); doc.line(M,y5+7,W-M,y5+7);
-          y5 += 9;
-        });
-      }
-      footer(7);;
+      });
+
+      var finalAiPage = doc.internal.getNumberOfPages();
+      if (finalAiPage !== _aiLastFooteredPage) footer(finalAiPage);
+
+
 
       // ═══════════════════════════════════════════════════
       // PAGE 6: CATEGORY DEEP DIVE
