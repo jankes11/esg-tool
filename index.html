@@ -1,15 +1,6 @@
 <!doctype html>
 <html lang="en" data-theme="light">
 <head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-CQWFJ6D709"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-CQWFJ6D709');
-</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ESG Assessment Tool</title>
@@ -1007,13 +998,13 @@ async function startCheckout(email) {
     var data = await res.json();
     if (!res.ok || !data.url) {
       if (errEl) { errEl.textContent = 'Could not open checkout. Please try again.'; errEl.style.display = 'block'; }
-      if (btn) { btn.textContent = 'Get full PDF report \u2014 \u00a319'; btn.disabled = false; }
+      if (btn) { btn.textContent = 'Get full PDF report \u2014 \u00a349'; btn.disabled = false; }
       return;
     }
     window.location.href = data.url;
   } catch(e) {
     if (errEl) { errEl.textContent = 'Connection error. Please try again.'; errEl.style.display = 'block'; }
-    if (btn) { btn.textContent = 'Get full PDF report \u2014 \u00a319'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Get full PDF report \u2014 \u00a349'; btn.disabled = false; }
   }
 }
 
