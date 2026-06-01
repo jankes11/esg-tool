@@ -2383,7 +2383,7 @@ async function generatePDF() {
         if (y5 > H-28) {
           footer(doc.internal.getNumberOfPages());
           doc.addPage();
-          y5 = sectionHeader('AI-powered recommendations (continued)', 6, '');
+          y5 = 22; // just continue from top margin, no new section header
         }
 
         // Section headers (## or bold standalone lines)
