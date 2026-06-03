@@ -480,22 +480,11 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
       <h2>You've completed the assessment!</h2>
       <p>Enter your email to unlock your full ESG score, category breakdown, and AI-powered recommendations.</p>
       <div class="gate-field">
-        <label for="gate-name">First name</lab<select id="co-industry" style="background:var(--surf2);color:var(--tx);border:1px solid var(--border);border-radius:.5rem;padding:.625rem .75rem;font-size:.9375rem;width:100%">
-        <option value="">Select your sector…</option>
-        <option value="Construction">Construction &amp; Civil Engineering</option>
-        <option value="Manufacturing">Manufacturing</option>
-        <option value="Food &amp; Beverage">Food &amp; Beverage / FMCG</option>
-        <option value="Retail">Retail &amp; Wholesale</option>
-        <option value="Professional Services">Professional Services / Consultancy</option>
-        <option value="Logistics">Logistics &amp; Transport</option>
-        <option value="Facilities Management">Facilities Management</option>
-        <option value="Technology">Technology &amp; Software</option>
-        <option value="Other">Other</option>
-      </select>
+        <label for="gate-name">First name</label>
         <input id="gate-name" type="text" placeholder="Your first name" autocomplete="given-name" style="background:var(--surf2);color:var(--tx);border-color:var(--bdr)">
       </div>
       <div class="gate-field">
-        <label for="gate-email">Work email address</lab<select id="co-industry" style="background:var(--surf2);color:var(--tx);border:1px solid var(--border);border-radius:.5rem;padding:.625rem .75rem;font-size:.9375rem;width:100%">
+        <label for="gate-email">Work email address</label>
         <option value="">Select your sector…</option>
         <option value="Construction">Construction &amp; Civil Engineering</option>
         <option value="Manufacturing">Manufacturing</option>
@@ -594,7 +583,7 @@ const CATEGORIES = [
     id: 'supply', label: 'Supply Chain & Partners', icon: '🔗',
     badge: 'badge-supply',
     ref: 'ESRS S2 · VSME B9/B10 · CSDDD',
-    weights: [2, 2.5, 2, 0.5, 1.5, 2, 2.5],
+    weights: [2, 2.5, 2, 0.5, 1.5, 2],
     questions: [
       'Do you have any process for checking whether your main suppliers treat their workers fairly — for example by reviewing their policies, asking them questions, or visiting their sites?',
       'Have you ever checked whether any of your suppliers could be involved in serious issues like forced labour, child labour, or unsafe working conditions — even if only at a basic level?',
@@ -726,6 +715,7 @@ function renderCategory(idx) {
 
 function setAnswer(key, val, btn, selClass) {
   answers[key] = val;
+  try { localStorage.setItem('esg_draft', JSON.stringify(answers)); } catch(e) {}
   const card = document.getElementById('qc-' + key);
   card.querySelectorAll('.opt').forEach(b => { b.className = 'opt'; });
   btn.classList.add(selClass);
