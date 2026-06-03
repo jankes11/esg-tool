@@ -2,6 +2,9 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ESG Assessment Tool</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -572,7 +575,7 @@ const CATEGORIES = [
     id: 'supply', label: 'Supply Chain & Partners', icon: '🔗',
     badge: 'badge-supply',
     ref: 'ESRS S2 · VSME B9/B10 · CSDDD',
-    weights: [2, 2.5, 2, 0.5, 1.5, 2],
+    weights: [2, 2.5, 2, 0.5, 1.5, 2, 2.5],
     questions: [
       'Do you have any process for checking whether your main suppliers treat their workers fairly — for example by reviewing their policies, asking them questions, or visiting their sites?',
       'Have you ever checked whether any of your suppliers could be involved in serious issues like forced labour, child labour, or unsafe working conditions — even if only at a basic level?',
@@ -580,8 +583,7 @@ const CATEGORIES = [
       'Do you make any effort to buy from local businesses, small suppliers, or companies owned by people from underrepresented groups — rather than always going with the biggest or cheapest option?',
       'When choosing new suppliers, do you look at their environmental and social track record — not just their price and quality?',
       'Do you have a Modern Slavery statement or any policy that addresses the risk of forced labour, trafficking, or exploitation in your business or supply chain? (Note: legally required in the UK for businesses with annual turnover over £36 million; best practice for all)',
-      'Do you give smaller or local suppliers a fair chance to win your business — for example through open tendering, prompt payment, or reasonable contract terms?',
-      'Have you taken steps to identify and reduce forced labour or child labour risks in your supply chain — and if your annual turnover exceeds £36 million, have you published a Modern Slavery statement?'
+      'Do you give smaller or local suppliers a fair chance to win your business — for example through open tendering, prompt payment, or reasonable contract terms?'
     ]
   },
   {
@@ -614,6 +616,12 @@ const SCORES = { yes: 100, partial: 50, no: 0, na: null };
 const TOTAL_Q = CATEGORIES.reduce((a, c) => a + c.questions.length, 0);
 
 let answers = {}, notes = {}, currentCat = 0;
+
+// Restore draft if user returns mid-assessment
+try {
+  const _savedDraft = localStorage.getItem('esg_draft');
+  if (_savedDraft) Object.assign(answers, JSON.parse(_savedDraft));
+} catch(e) {}
 
 /* ── Screens ───────────────────────────────────────────── */
 function showScreen(id) {
@@ -1203,6 +1211,7 @@ async function verifySessionAndUnlock(sessionId) {
       return;
     }
     _pdfUnlocked = true;
+    try { localStorage.removeItem('esg_draft'); } catch(e) {}
     sessionStorage.removeItem('pending_session_id');
     var upgradeBox = document.getElementById('upgrade-box');
     if (upgradeBox) {
