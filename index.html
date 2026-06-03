@@ -416,81 +416,58 @@ header{position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--bg) 
       <h2>Tell us about your business</h2>
       <p class="sub">This personalises your report. Everything stays in your browser — nothing is sent anywhere.</p>
       <div class="field-grid">
-        <div class="field"><label for="co-name">Company name</lab<select id="co-industry" style="background:var(--surf2);color:var(--tx);border:1px solid var(--border);border-radius:.5rem;padding:.625rem .75rem;font-size:.9375rem;width:100%">
-        <option value="">Select your sector…</option>
-        <option value="Construction">Construction &amp; Civil Engineering</option>
-        <option value="Manufacturing">Manufacturing</option>
-        <option value="Food &amp; Beverage">Food &amp; Beverage / FMCG</option>
-        <option value="Retail">Retail &amp; Wholesale</option>
-        <option value="Professional Services">Professional Services / Consultancy</option>
-        <option value="Logistics">Logistics &amp; Transport</option>
-        <option value="Facilities Management">Facilities Management</option>
-        <option value="Technology">Technology &amp; Software</option>
-        <option value="Other">Other</option>
-      </select><input id="co-name" type="text" placeholder="e.g. Acme Ltd" style="background:var(--surf2);color:var(--tx)"></div>
-        <div class="field"><label for="co-industry">Industry / sector</lab<select id="co-industry" style="background:var(--surf2);color:var(--tx);border:1px solid var(--border);border-radius:.5rem;padding:.625rem .75rem;font-size:.9375rem;width:100%">
-        <option value="">Select your sector…</option>
-        <option value="Construction">Construction &amp; Civil Engineering</option>
-        <option value="Manufacturing">Manufacturing</option>
-        <option value="Food &amp; Beverage">Food &amp; Beverage / FMCG</option>
-        <option value="Retail">Retail &amp; Wholesale</option>
-        <option value="Professional Services">Professional Services / Consultancy</option>
-        <option value="Logistics">Logistics &amp; Transport</option>
-        <option value="Facilities Management">Facilities Management</option>
-        <option value="Technology">Technology &amp; Software</option>
-        <option value="Other">Other</option>
-      </select><input id="co-industry" type="text" placeholder="e.g. Construction, Retail, IT Services" style="background:var(--surf2);color:var(--tx)"></div>
-        <div class="field"><label for="co-size">Number of employees</lab<select id="co-industry" style="background:var(--surf2);color:var(--tx);border:1px solid var(--border);border-radius:.5rem;padding:.625rem .75rem;font-size:.9375rem;width:100%">
-        <option value="">Select your sector…</option>
-        <option value="Construction">Construction &amp; Civil Engineering</option>
-        <option value="Manufacturing">Manufacturing</option>
-        <option value="Food &amp; Beverage">Food &amp; Beverage / FMCG</option>
-        <option value="Retail">Retail &amp; Wholesale</option>
-        <option value="Professional Services">Professional Services / Consultancy</option>
-        <option value="Logistics">Logistics &amp; Transport</option>
-        <option value="Facilities Management">Facilities Management</option>
-        <option value="Technology">Technology &amp; Software</option>
-        <option value="Other">Other</option>
-      </select>
-          <select id="co-size" style="background:var(--surf2);color:var(--tx)">
-            <option value="">Select…</option>
-            <option>1–10</option><option>11–49</option><option>50–249</option><option>250+</option>
+
+        <div class="field">
+          <label for="co-name">Company name</label>
+          <input id="co-name" type="text" placeholder="e.g. Acme Ltd" autocomplete="organization" style="background:var(--surf2);color:var(--tx)">
+        </div>
+
+        <div class="field">
+          <label for="co-industry">Industry / sector <span style="color:var(--red,#e02020)">*</span></label>
+          <select id="co-industry" style="background:var(--surf2);color:var(--tx);border:1px solid var(--border);border-radius:.5rem;padding:.625rem .75rem;font-size:.9375rem;width:100%">
+            <option value="">Select your sector…</option>
+            <option value="Construction">Construction &amp; Civil Engineering</option>
+            <option value="Manufacturing">Manufacturing</option>
+            <option value="Food">Food &amp; Beverage / FMCG</option>
+            <option value="Retail">Retail &amp; Wholesale</option>
+            <option value="Professional Services">Professional Services / Consultancy</option>
+            <option value="Logistics">Logistics &amp; Transport</option>
+            <option value="Facilities Management">Facilities Management</option>
+            <option value="Technology">Technology &amp; Software</option>
+            <option value="Other">Other</option>
           </select>
         </div>
-        <div class="field"><label for="co-assessor">Your name (optional)</lab<select id="co-industry" style="background:var(--surf2);color:var(--tx);border:1px solid var(--border);border-radius:.5rem;padding:.625rem .75rem;font-size:.9375rem;width:100%">
-        <option value="">Select your sector…</option>
-        <option value="Construction">Construction &amp; Civil Engineering</option>
-        <option value="Manufacturing">Manufacturing</option>
-        <option value="Food &amp; Beverage">Food &amp; Beverage / FMCG</option>
-        <option value="Retail">Retail &amp; Wholesale</option>
-        <option value="Professional Services">Professional Services / Consultancy</option>
-        <option value="Logistics">Logistics &amp; Transport</option>
-        <option value="Facilities Management">Facilities Management</option>
-        <option value="Technology">Technology &amp; Software</option>
-        <option value="Other">Other</option>
-      </select><input id="co-assessor" type="text" placeholder="Person completing this" style="background:var(--surf2);color:var(--tx)"></div>
+
+        <div class="field">
+          <label for="co-size">Number of employees</label>
+          <select id="co-size" style="background:var(--surf2);color:var(--tx);border:1px solid var(--border);border-radius:.5rem;padding:.625rem .75rem;font-size:.9375rem;width:100%">
+            <option value="">Select…</option>
+            <option value="1-10">1–10</option>
+            <option value="11-50">11–50</option>
+            <option value="51-200">51–200</option>
+            <option value="201-500">201–500</option>
+            <option value="500+">500+</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="co-name2">Your name <span style="color:var(--muted);font-weight:400;font-size:.8rem">(optional)</span></label>
+          <input id="co-name2" type="text" placeholder="e.g. Jane Smith" autocomplete="name" style="background:var(--surf2);color:var(--tx)">
+        </div>
+
+        <div class="field">
+          <label for="co-date">Assessment date</label>
+          <input id="co-date" type="date" style="background:var(--surf2);color:var(--tx)">
+        </div>
+
       </div>
-      <div class="field" style="max-width:220px"><label for="co-date">Date</lab<select id="co-industry" style="background:var(--surf2);color:var(--tx);border:1px solid var(--border);border-radius:.5rem;padding:.625rem .75rem;font-size:.9375rem;width:100%">
-        <option value="">Select your sector…</option>
-        <option value="Construction">Construction &amp; Civil Engineering</option>
-        <option value="Manufacturing">Manufacturing</option>
-        <option value="Food &amp; Beverage">Food &amp; Beverage / FMCG</option>
-        <option value="Retail">Retail &amp; Wholesale</option>
-        <option value="Professional Services">Professional Services / Consultancy</option>
-        <option value="Logistics">Logistics &amp; Transport</option>
-        <option value="Facilities Management">Facilities Management</option>
-        <option value="Technology">Technology &amp; Software</option>
-        <option value="Other">Other</option>
-      </select><input id="co-date" type="date" style="background:var(--surf2);color:var(--tx)"></div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;gap:.625rem">
-      <button class="btn-secondary" onclick="showScreen('welcome')">← Back</button>
-      <button class="btn-primary" onclick="startAssessment()">Begin →</button>
+      <div style="display:flex;gap:.75rem;margin-top:1.5rem;flex-wrap:wrap;align-items:center">
+        <button class="btn-primary" onclick="startAssessment()">Begin assessment →</button>
+        <button class="btn-ghost" onclick="showScreen('welcome')">← Back</button>
+      </div>
     </div>
   </div>
 </div>
-
-<!-- ══ ASSESSMENT ══ -->
 <div class="screen" id="screen-assessment">
   <div class="container" id="assessment-container"></div>
 </div>
@@ -616,8 +593,8 @@ const CATEGORIES = [
   {
     id: 'supply', label: 'Supply Chain & Partners', icon: '🔗',
     badge: 'badge-supply',
-    ref: 'ESRS S2 · VSME B11 · CSDDD',
-    weights: [2, 2.5, 2, 0.5, 1.5, 2, 1],
+    ref: 'ESRS S2 · VSME B9/B10 · CSDDD',
+    weights: [2, 2.5, 2, 0.5, 1.5, 2, 2.5],
     questions: [
       'Do you have any process for checking whether your main suppliers treat their workers fairly — for example by reviewing their policies, asking them questions, or visiting their sites?',
       'Have you ever checked whether any of your suppliers could be involved in serious issues like forced labour, child labour, or unsafe working conditions — even if only at a basic level?',
@@ -1770,10 +1747,14 @@ async function generatePDF() {
       var nextBand3 = null;
       for(var bi3=0;bi3<bt3.length;bi3++){ if(overall<bt3[bi3].min){nextBand3=bt3[bi3];break;} }
       var bm3 = {
-        'construction':[46,68,'Construct'],'build':[46,68,'Construct'],'civil':[46,68,'Construct'],
-        'manufactur':[49,71,'Manufact'],'retail':[44,65,'Retail'],'food':[44,65,'Retail'],
+        'construction':[46,68,'Construction'],'build':[46,68,'Construction'],'civil':[46,68,'Construction'],
+        'manufactur':[49,71,'Manufacturing'],
+        'food':[44,65,'Food & Bev'],'beverage':[44,65,'Food & Bev'],'fmcg':[44,65,'Food & Bev'],
+        'retail':[44,65,'Retail'],
         'professional':[52,74,'Prof.Svcs'],'consult':[52,74,'Prof.Svcs'],
-        'tech':[52,74,'Prof.Svcs'],'software':[52,74,'Prof.Svcs'],
+        'tech':[52,74,'Technology'],'software':[52,74,'Technology'],
+        'logistic':[46,68,'Logistics'],'transport':[46,68,'Logistics'],
+        'facilit':[46,68,'Facilities'],
       };
       var bmark3 = null;
       Object.keys(bm3).forEach(function(k){ if(safe(industry).toLowerCase().indexOf(k)>-1) bmark3=bm3[k]; });
